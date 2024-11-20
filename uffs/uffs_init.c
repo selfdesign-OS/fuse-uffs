@@ -1,29 +1,42 @@
 #include "ops.h"
 
+#include "uffs.h"
+#include "ops.h"
+#include <fuse.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define BOOT_SECTOR_SIZE            0x400
+
+static struct uffs_DeviceSt deviceSt;
+
+// FUSE의 init 핸들러
 void *uffs_init(struct fuse_conn_info *info) {
+    if (device_fill() != 0) {
+        printf("uffs cannot continue\n");
+        abort();
+    }
 }
 
+int device_fill(void)
+{
+    disk_read(BOOT_SECTOR_SIZE, sizeof(struct uffs_DeviceSt), &deviceSt);
+    return 0;
+}
 
-// Ensure you have implementations or stubs for the following functions:
-// - uffs_GetSystemMemoryAllocator()
-// - uffs_FlashInterfaceInit()
-// - uffs_BufInit()
-// - uffs_BlockInfoInitCache()
-// - uffs_TreeInit()
-// - uffs_BuildTree()
-// - uffs_DeviceInitLock()
-// - uffs_BadBlockInit()
-// - uffs_DeviceReleaseLock()
-// - uffs_Perror()
+int disk_read(off_t where, size_t size, void *p, const char *func, int line)
+{
+    static pthread_mutex_t read_lock = PTHREAD_MUTEX_INITIALIZER;
+    ssize_t pread_ret;
 
-// Also, make sure to define the necessary constants and macros, such as:
-// - MAX_DIRTY_BUF_GROUPS
-// - UFFS_MAX_PAGES_PER_BLOCK
-// - MAX_CACHED_BLOCK_INFO
-// - MAX_PAGE_BUFFERS
-// - MAX_DIRTY_PAGES_IN_A_BLOCK
-// - MINIMUN_ERASED_BLOCK
-// - CLONE_BUFFERS_THRESHOLD
-// - U_SUCC
-// - U_FAIL
-// - uffs_Assert()
+    pthread_mutex_lock(&read_lock);
+    pread_ret = pread_wrapper(disk_fd, p, size, where);
+    pthread_mutex_unlock(&read_lock);
+
+    return pread_ret;
+}
+
+static int pread_wrapper(int disk_fd, void *p, size_t size, off_t where)
+{
+    return pread(disk_fd, p, size, where);
+}
