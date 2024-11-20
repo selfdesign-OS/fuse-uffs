@@ -1,12 +1,8 @@
 #include "ops.h"
 
 void *uffs_init(struct fuse_conn_info *info) {
-    treeinit();
 }
 
-void treeinit(){
-    
-}
 
 // Ensure you have implementations or stubs for the following functions:
 // - uffs_GetSystemMemoryAllocator()
