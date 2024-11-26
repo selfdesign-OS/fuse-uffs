@@ -1,0 +1,30 @@
+# 컴파일러와 플래그 설정
+CC = gcc
+CFLAGS = -Wall -g
+LDFLAGS = `pkg-config fuse --cflags --libs`
+
+# 파일 이름 설정
+TARGET = mkuffs
+SRCS = mkuffs.c uffs_fileem.c uffs_init.c
+HEADERS = uffs_device.h uffs_fileem.h uffs_flash.h uffs_types.h
+
+# 오브젝트 파일 생성
+OBJS = $(SRCS:.c=.o)
+
+# 기본 타겟
+all: $(TARGET)
+
+# 실행 파일 생성
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+
+# 개별 소스 파일 컴파일
+%.o: %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# 제거
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+# 리빌드
+rebuild: clean all
