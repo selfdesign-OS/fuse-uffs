@@ -60,21 +60,16 @@ struct fuse_operations uffs_oper = {
 
 int main(int argc, char *argv[])
 {
-	if (argc < 3) {
-		fprintf(stderr, "Usage: %s <mount-directory> <sizeinMB> [<disk-image>]\n", argv[0]);
-		return -1;
-	}
+	// if (argc < 3) {
+	// 	fprintf(stderr, "Usage: %s <mount-directory> <sizeinMB> [<disk-image>]\n", argv[0]);
+	// 	return -1;
+	// }
 
-	if (argc == 4) {
-		strcpy(filename, argv[3]);
-		persistent = 1;
-	}
+	// if (argc == 4) {
+	// 	strcpy(filename, argv[3]);
+	// }
 
 	setup_ramdisk();
-
-	size_t size_bytes = atoi(argv[2])*1000000;
-	NBLOCKS = size_bytes/(sizeof(node) + sizeof(block));
-	NNODES = NBLOCKS;
 	
 	//size_t storage = NBLOCKS*sizeof(block);
 	//fprintf(stderr,"number of blocks: %d\n", NBLOCKS);

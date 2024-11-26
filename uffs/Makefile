@@ -1,7 +1,7 @@
 # 컴파일러와 플래그 설정
 CC = gcc
-CFLAGS = -Wall -g
-LDFLAGS = `pkg-config fuse --cflags --libs`
+CFLAGS = -Wall -g -D_FILE_OFFSET_BITS=64 pkg-config fuse --cflags
+LDFLAGS = pkg-config fuse --libs
 
 # 파일 이름 설정
 TARGET = mkuffs
@@ -16,15 +16,15 @@ all: $(TARGET)
 
 # 실행 파일 생성
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+$(CC) $(CFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
 # 개별 소스 파일 컴파일
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(CC) $(CFLAGS) -c $< -o $@
 
 # 제거
 clean:
-	rm -f $(OBJS) $(TARGET)
+rm -f $(OBJS) $(TARGET)
 
 # 리빌드
 rebuild: clean all
