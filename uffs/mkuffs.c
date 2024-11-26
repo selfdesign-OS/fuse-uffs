@@ -4,7 +4,6 @@
 #include <stdlib.h>
 
 #include "uffs_fileem.h"
-#include "ops.h"
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
 const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
@@ -52,6 +51,22 @@ int setup_ramdisk() {
 	setup_emu_private(femu_GetPrivate());
 }
 
+int uffs_getattr(const char *path, struct stat *stbuf)
+{
+    return 0;
+}
+
+int uffs_open(const char *path, struct fuse_file_info *fi)
+{   
+    return 0;
+}
+
+int uffs_read(const char *path, char *buf, size_t size, off_t offset,
+            struct fuse_file_info *fi)
+{
+    return 0;
+}
+
 struct fuse_operations uffs_oper = {
 	.getattr	= uffs_getattr,
 	.open       = uffs_open,
@@ -77,5 +92,5 @@ int main(int argc, char *argv[])
 	//fprintf(stderr,"Total space for storage: %lu\n", storage);
 
 	argc = 2;
-	return fuse_main(argc, argv, &uffs_oper, NULL);
+	return fuse_main(argc, argv, &uffs_oper);
 }
