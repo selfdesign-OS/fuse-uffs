@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "uffs_fileem.h"
+#include "ops.h"
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
 const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
@@ -53,19 +54,8 @@ int setup_ramdisk() {
 
 struct fuse_operations uffs_oper = {
 	.getattr	= uffs_getattr,
-	.readdir	= uffs_readdir,
-	.opendir	= uffs_opendir,
-	.mkdir		= uffs_mkdir,
-	.rmdir		= uffs_rmdir,
-	.create		= uffs_create,
-	.truncate 	= uffs_truncate,
-	.open		= uffs_open,
-	.read		= uffs_read,
-	.write 		= uffs_write,
-	.unlink		= uffs_unlink,
-	.flush		= uffs_flush,
-	.destroy 	= uffs_destroy,
-	.rename 	= uffs_rename
+	.open       = uffs_open,
+    .read       = uffs_read
 };
 
 int main(int argc, char *argv[])
