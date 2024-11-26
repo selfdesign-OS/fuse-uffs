@@ -39,4 +39,4 @@ TAGS
 /GTAGS
 /test/test_setattr
 /build/
-*vscode*
+.vscode/*

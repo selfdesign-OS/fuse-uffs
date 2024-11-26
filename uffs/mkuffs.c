@@ -1,3 +1,4 @@
+#include <fuse.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -42,10 +43,54 @@ static void setup_emu_private(uffs_FileEmu *emu)
 	emu->emu_filename = conf_emu_filename;
 }
 
-int main() {
+int setup_ramdisk() {
 	// setup file emulator storage with parameters from command line
 	setup_storage(femu_GetStorage());
 
 	// setup file emulator private data
 	setup_emu_private(femu_GetPrivate());
+}
+
+struct fuse_operations uffs_oper = {
+	.getattr	= uffs_getattr,
+	.readdir	= uffs_readdir,
+	.opendir	= uffs_opendir,
+	.mkdir		= uffs_mkdir,
+	.rmdir		= uffs_rmdir,
+	.create		= uffs_create,
+	.truncate 	= uffs_truncate,
+	.open		= uffs_open,
+	.read		= uffs_read,
+	.write 		= uffs_write,
+	.unlink		= uffs_unlink,
+	.flush		= uffs_flush,
+	.destroy 	= uffs_destroy,
+	.rename 	= uffs_rename
+};
+
+int main(int argc, char *argv[])
+{
+	if (argc < 3) {
+		fprintf(stderr, "Usage: %s <mount-directory> <sizeinMB> [<disk-image>]\n", argv[0]);
+		return -1;
+	}
+
+	if (argc == 4) {
+		strcpy(filename, argv[3]);
+		persistent = 1;
+	}
+
+	setup_ramdisk();
+
+	size_t size_bytes = atoi(argv[2])*1000000;
+	NBLOCKS = size_bytes/(sizeof(node) + sizeof(block));
+	NNODES = NBLOCKS;
+	
+	//size_t storage = NBLOCKS*sizeof(block);
+	//fprintf(stderr,"number of blocks: %d\n", NBLOCKS);
+	//fprintf(stderr,"number of nodes: %d\n", NNODES);
+	//fprintf(stderr,"Total space for storage: %lu\n", storage);
+
+	argc = 2;
+	return fuse_main(argc, argv, &uffs_oper, NULL);
 }
