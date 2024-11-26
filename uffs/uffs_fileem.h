@@ -1,4 +1,4 @@
-#include "uffs/uffs_device.h"
+#include "uffs_device.h"
 
 typedef struct uffs_FileEmuSt {
 	int initCount;
