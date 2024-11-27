@@ -14,3 +14,6 @@ typedef struct uffs_FileEmuSt {
 	UBOOL wrap_inited;
 #endif
 } uffs_FileEmu;
+
+struct uffs_StorageAttrSt *femu_GetStorage();
+struct uffs_FileEmuSt *femu_GetPrivate();
