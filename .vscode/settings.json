@@ -8,6 +8,8 @@
         "charconv": "cpp",
         "uffs_os.h": "c",
         "uffs_device.h": "c",
-        "uffs_mem.h": "c"
+        "uffs_mem.h": "c",
+        "stdio.h": "c",
+        "uffs_core.h": "c"
     }
 }

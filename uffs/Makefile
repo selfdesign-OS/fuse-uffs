@@ -5,8 +5,8 @@ LDFLAGS = `pkg-config fuse --libs`
 
 # 파일 이름 설정
 TARGET = mkuffs
-SRCS = mkuffs.c uffs_fileem.c
-HEADERS = uffs_device.h uffs_fileem.h uffs_flash.h uffs_types.h
+SRCS = mkuffs.c uffs_fileem.c uffs_os.c
+HEADERS = uffs_buf.h uffs_core.h uffs_device.h uffs_fileem.h uffs_flash.h uffs_mem.h uffs_os.h uffs_pool.h uffs_public.h uffs_tree.h uffs_types.h 
 
 # 오브젝트 파일 생성
 OBJS = $(SRCS:.c=.o)

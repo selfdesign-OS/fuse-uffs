@@ -15,5 +15,9 @@ typedef struct uffs_FileEmuSt {
 #endif
 } uffs_FileEmu;
 
+/* file emulator device init/release entry */
+URET femu_InitDevice(uffs_Device *dev);
+URET femu_ReleaseDevice(uffs_Device *dev);
+
 struct uffs_StorageAttrSt *femu_GetStorage();
 struct uffs_FileEmuSt *femu_GetPrivate();

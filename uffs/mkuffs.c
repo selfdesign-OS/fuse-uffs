@@ -64,7 +64,7 @@ int setup_ramdisk() {
 
 static int init_uffs_fs(void)
 {
-	struct uffs_Device *dev = &conf_device
+	struct uffs_Device *dev = &conf_device;
 	
 	uffs_MemSetupSystemAllocator(dev->mem);
 

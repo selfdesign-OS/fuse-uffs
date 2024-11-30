@@ -74,3 +74,5 @@ struct uffs_TreeSt {
 	u16 data_entry[DATA_NODE_ENTRY_LEN];
 	u16 max_serial;
 };
+
+#endif
