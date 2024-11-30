@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "uffs_fileem.h"
+#include "uffs_core.h"
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
 const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
@@ -24,6 +25,8 @@ static int conf_total_blocks = TOTAL_BLOCKS_DEFAULT;
 static int conf_ecc_option = ECC_OPTION_DEFAULT;
 static int conf_ecc_size = 0; // 0 - Let UFFS choose the size
 
+static uffs_Device conf_device = {0};
+
 static void setup_storage(struct uffs_StorageAttrSt *attr)
 {
 	attr->total_blocks = conf_total_blocks;				/* total blocks */
@@ -35,6 +38,14 @@ static void setup_storage(struct uffs_StorageAttrSt *attr)
 	attr->ecc_opt = conf_ecc_option;					/* ECC option */
 	attr->ecc_size = conf_ecc_size;						/* ECC size */
 	attr->layout_opt = UFFS_LAYOUT_UFFS;				/* let UFFS handle layout */
+}
+
+static void setup_device(uffs_Device *dev)
+{
+	// TODO: We should call Init function.
+	dev->Init = femu_InitDevice;
+	dev->Release = femu_ReleaseDevice;
+	dev->attr = femu_GetStorage();
 }
 
 static void setup_emu_private(uffs_FileEmu *emu)
@@ -49,6 +60,19 @@ int setup_ramdisk() {
 
 	// setup file emulator private data
 	setup_emu_private(femu_GetPrivate());
+}
+
+static int init_uffs_fs(void)
+{
+	struct uffs_Device *dev = &conf_device
+	
+	uffs_MemSetupSystemAllocator(dev->mem);
+
+	setup_device(dev);
+
+	// uffs_Mount(???);
+
+	return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
 }
 
 int uffs_getattr(const char *path, struct stat *stbuf)
@@ -85,6 +109,12 @@ int main(int argc, char *argv[])
 	// }
 
 	setup_ramdisk();
+
+	ret = init_uffs_fs();
+	if (ret != 0) {
+		MSGLN ("Init file system fail: %d", ret);
+		return -1;
+	}
 	
 	//size_t storage = NBLOCKS*sizeof(block);
 	//fprintf(stderr,"number of blocks: %d\n", NBLOCKS);

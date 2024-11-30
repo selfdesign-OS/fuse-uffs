@@ -4,6 +4,10 @@
         "ops.h": "c",
         "assert.h": "c",
         "fuse.h": "c",
-        "uffs_fileem.h": "c"
+        "uffs_fileem.h": "c",
+        "charconv": "cpp",
+        "uffs_os.h": "c",
+        "uffs_device.h": "c",
+        "uffs_mem.h": "c"
     }
 }
