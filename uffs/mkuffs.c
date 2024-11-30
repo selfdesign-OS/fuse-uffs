@@ -72,7 +72,9 @@ static int init_uffs_fs(void)
 
 	// uffs_Mount(???);
 
-	return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
+	// TODO: must edit
+	return 0;
+	// return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
 }
 
 int uffs_getattr(const char *path, struct stat *stbuf)
