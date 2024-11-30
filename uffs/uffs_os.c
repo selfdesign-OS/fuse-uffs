@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <windows.h>
+// #include <windows.h>
 
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {

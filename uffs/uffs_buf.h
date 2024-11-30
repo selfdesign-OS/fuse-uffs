@@ -3,6 +3,8 @@
 
 #include "uffs_types.h"
 #include "uffs_device.h"
+#include "uffs_tree.h"
+#include "uffs_core.h"
 
 /** uffs page buffer */
 struct uffs_BufSt{

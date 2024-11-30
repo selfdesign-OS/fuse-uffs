@@ -1,4 +1,10 @@
+#ifndef _UFFS_FLASH_H_
+#define _UFFS_FLASH_H_
+
 #include "uffs_types.h"
+#include "uffs_core.h"
+#include "uffs_device.h"
+// #include "uffs_fs.h"
 
 #define UFFS_SPARE_LAYOUT_SIZE	6	//!< maximum spare layout array size, 2 segments
 
@@ -31,3 +37,5 @@ struct uffs_StorageAttrSt {
 	u8 _uffs_data_layout[UFFS_SPARE_LAYOUT_SIZE];	//!< uffs spare data layout
 	void *_private;			//!< private data for storage attribute
 };
+
+#endif

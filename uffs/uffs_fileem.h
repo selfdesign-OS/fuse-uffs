@@ -1,3 +1,6 @@
+#ifndef _UFFS_FILEEM_H_
+#define _UFFS_FILEEM_H_
+
 #include "uffs_device.h"
 #include <stdio.h>
 
@@ -21,3 +24,5 @@ URET femu_ReleaseDevice(uffs_Device *dev);
 
 struct uffs_StorageAttrSt *femu_GetStorage();
 struct uffs_FileEmuSt *femu_GetPrivate();
+
+#endif

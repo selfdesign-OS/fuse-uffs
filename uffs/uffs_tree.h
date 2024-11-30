@@ -2,6 +2,7 @@
 #define _UFFS_TREE_H_
 
 #include "uffs_types.h"
+#include "uffs_pool.h"
 #include "uffs_device.h"
 #include "uffs_core.h"
 

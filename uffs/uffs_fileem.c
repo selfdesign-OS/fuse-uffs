@@ -1,3 +1,8 @@
+#include <sys/types.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "uffs_device.h"
 #include "uffs_fileem.h"
 
 static struct uffs_StorageAttrSt g_femu_storage = {0};

@@ -2,11 +2,12 @@
 #define UFFS_DEVICE_H
 
 #include "uffs_types.h"
-#include "uffs_flash.h"
-#include "uffs_core.h"
-#include "uffs_tree.h"
+#include "uffs_buf.h"
 #include "uffs_pool.h"
+#include "uffs_tree.h"
 #include "uffs_mem.h"
+#include "uffs_core.h"
+#include "uffs_flash.h"
 
 // /**
 //  * \def MAX_DIRTY_BUF_GROUPS

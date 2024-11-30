@@ -3,8 +3,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "uffs_fileem.h"
+#include "uffs_os.h"
+#include "uffs_public.h"
+// #include "uffs_fs.h"
+// #include "uffs_utils.h"
 #include "uffs_core.h"
+// #include "uffs_mtb.h"
+
+// #include "cmdline.h"
+#include "uffs_fileem.h"
 
 #define DEFAULT_EMU_FILENAME "uffsemfile.bin"
 const char * conf_emu_filename = DEFAULT_EMU_FILENAME;
@@ -66,7 +73,7 @@ static int init_uffs_fs(void)
 {
 	struct uffs_Device *dev = &conf_device;
 	
-	uffs_MemSetupSystemAllocator(dev->mem);
+	uffs_MemSetupSystemAllocator(&dev->mem);
 
 	setup_device(dev);
 
@@ -101,6 +108,8 @@ struct fuse_operations uffs_oper = {
 
 int main(int argc, char *argv[])
 {
+	int ret;
+
 	// if (argc < 3) {
 	// 	fprintf(stderr, "Usage: %s <mount-directory> <sizeinMB> [<disk-image>]\n", argv[0]);
 	// 	return -1;
