@@ -15,6 +15,15 @@
 // #define MAX_DIRTY_BUF_GROUPS    3
 
 /** 
+ * \struct uffs_PartitionSt
+ * \brief partition basic information
+ */
+struct uffs_PartitionSt {
+	u16 start;		//!< start block number of partition
+	u16 end;		//!< end block number of partition
+};
+
+/** 
  * \struct uffs_PageBufDescSt
  * \brief uffs page buffers descriptor
  */
@@ -52,6 +61,7 @@ struct uffs_DeviceSt {
 	void *_private;								//!< private data for device
 
 	struct uffs_StorageAttrSt		*attr;		//!< storage attribute
+	struct uffs_PartitionSt			par;		//!< partition information
 	// struct uffs_FlashOpsSt			*ops;		//!< flash operations
 	struct uffs_PageBufDescSt		buf;		//!< page buffers
 	struct uffs_PageCommInfoSt		com;		//!< common information

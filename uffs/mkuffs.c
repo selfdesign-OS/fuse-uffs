@@ -8,7 +8,7 @@
 // #include "uffs_fs.h"
 // #include "uffs_utils.h"
 #include "uffs_core.h"
-// #include "uffs_mtb.h"
+#include "uffs_mtb.h"
 
 // #include "cmdline.h"
 #include "uffs_fileem.h"
@@ -61,7 +61,7 @@ static void setup_emu_private(uffs_FileEmu *emu)
 	emu->emu_filename = conf_emu_filename;
 }
 
-int setup_ramdisk() {
+static void setup_ramdisk() {
 	// setup file emulator storage with parameters from command line
 	setup_storage(femu_GetStorage());
 
@@ -77,7 +77,7 @@ static int init_uffs_fs(void)
 
 	setup_device(dev);
 
-	// uffs_Mount(???);
+	uffs_Mount(dev);
 
 	// TODO: must edit
 	return 0;
