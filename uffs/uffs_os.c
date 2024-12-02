@@ -1,7 +1,5 @@
 #include "uffs_os.h"
 #include "uffs_public.h"
-// TODO: "uffs_mem.h" doesn't exist in original file.
-#include "uffs_mem.h"
 #include <memory.h>
 #include <stdlib.h>
 #include <time.h>

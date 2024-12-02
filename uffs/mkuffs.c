@@ -71,7 +71,7 @@ int setup_ramdisk() {
 
 static int init_uffs_fs(void)
 {
-	struct uffs_Device *dev = &conf_device;
+	uffs_Device *dev = &conf_device;
 	
 	uffs_MemSetupSystemAllocator(&dev->mem);
 
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
 	ret = init_uffs_fs();
 	if (ret != 0) {
-		MSGLN ("Init file system fail: %d", ret);
+		printf("Init file system fail: %d\n", ret);
 		return -1;
 	}
 	
