@@ -29,11 +29,11 @@ URET uffs_InitDevice(uffs_Device *dev)
 		// goto fail;
 	}
 
-	ret = uffs_BuildTree(dev);
-	if (ret != U_SUCC) {
-		printf("fail to build tree\n");
-		// goto fail;
-	}
+	// ret = uffs_BuildTree(dev);
+	// if (ret != U_SUCC) {
+	// 	printf("fail to build tree\n");
+	// 	// goto fail;
+	// }
 
 	return U_SUCC;
 

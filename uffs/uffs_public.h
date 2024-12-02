@@ -28,4 +28,9 @@
  **/
 #define UFFS_MAX_PAGES_PER_BLOCK    (1 << UFFS_TAG_PAGE_ID_SIZE_BITS)
 
+/************************************************************************/
+/*  init functions                                                                     */
+/************************************************************************/
+URET uffs_InitDevice(uffs_Device *dev);
+
 #endif

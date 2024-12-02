@@ -52,10 +52,10 @@ struct uffs_DebugMsgOutputSt {
 // void uffs_SetupDebugOutput(void);
 
 // /* OS specific functions */
-// int uffs_SemCreate(OSSEM *sem);
-// int uffs_SemWait(OSSEM sem);
-// int uffs_SemSignal(OSSEM sem);
-// int uffs_SemDelete(OSSEM *sem);
+int uffs_SemCreate(OSSEM *sem);
+int uffs_SemWait(OSSEM sem);
+int uffs_SemSignal(OSSEM sem);
+int uffs_SemDelete(OSSEM *sem);
 
 // int uffs_OSGetTaskId(void);	//get current task id
 // unsigned int uffs_GetCurDateTime(void);

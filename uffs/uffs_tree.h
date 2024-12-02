@@ -33,10 +33,10 @@
 #ifndef _UFFS_TREE_H_
 #define _UFFS_TREE_H_
 
-#include "uffs/uffs_types.h"
-#include "uffs/uffs_pool.h"
-#include "uffs/uffs_device.h"
-#include "uffs/uffs_core.h"
+#include "uffs_types.h"
+#include "uffs_pool.h"
+#include "uffs_device.h"
+#include "uffs_core.h"
 
 #ifdef __cplusplus
 extern "C"{

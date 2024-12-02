@@ -26,7 +26,7 @@ typedef struct uffs_MountTableEntrySt {
 // int uffs_UnRegisterMountTable(uffs_MountTable *mtb);
 
 /** mount partition */
-int uffs_Mount(const char *mount);
+int uffs_Mount(uffs_Device *dev);
 
 // /** unmount parttion */
 // int uffs_UnMount(const char *mount);
