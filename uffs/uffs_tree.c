@@ -33,12 +33,12 @@ URET uffs_TreeInit(uffs_Device *dev)
 		}
 	}
 	if (size * num > dev->mem.tree_nodes_pool_size) {
-		printf("Tree buffer require %d but only %d available.\n",
+		fprintf(stderr, "Tree buffer require %d but only %d available.\n",
 					size * num, dev->mem.tree_nodes_pool_size);
 		memset(pool, 0, sizeof(uffs_Pool));
 		return U_FAIL;
 	}
-	printf("alloc tree nodes %d bytes.\n", size * num);
+	fprintf(stderr, "alloc tree nodes %d bytes.\n", size * num);
 	
 	uffs_PoolInit(pool, dev->mem.tree_nodes_pool_buf,
 					dev->mem.tree_nodes_pool_size, size, num, U_FALSE);

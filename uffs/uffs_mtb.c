@@ -15,12 +15,12 @@ int uffs_Mount(uffs_Device *dev) {
 	dev->par.end = 127;
 	
 	if (dev->Init(dev) == U_FAIL) {
-		printf("init device for mount point fail\n");
+		fprintf(stderr, "init device for mount point fail\n");
 		return -1;
 	}
 	
 	if (uffs_InitDevice(dev) != U_SUCC) {
-		printf("init device fail !\n");
+		fprintf(stderr, "init device fail !\n");
 		return -1;
 	}
 }
@@ -33,7 +33,7 @@ int uffs_Mount(uffs_Device *dev) {
  */
 int uffs_GetMatchedMountPointSize(const char *path)
 {
-	printf("[uffs_GetMatchedMountPointSize] path: %s", path);
+	fprintf(stderr, "[uffs_GetMatchedMountPointSize] path: %s\n", path);
 	return 0;
 
 	// int pos;

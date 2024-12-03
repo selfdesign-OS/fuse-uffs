@@ -84,7 +84,7 @@ static int init_uffs_fs(void)
 
 int uffs_getattr(const char *name, struct stat *stbuf)
 {
-	printf("[uffs_getattr] called\n");
+	fprintf(stderr, "[uffs_getattr] called\n");
     uffs_Object *obj;
 	int ret = 0;
 	int err = 0;
@@ -120,7 +120,7 @@ int uffs_getattr(const char *name, struct stat *stbuf)
 	// uffs_set_error(-err);
 	// uffs_GlobalFsLockUnlock();
 
-	printf("[uffs_getattr] finished\n");
+	fprintf(stderr, "[uffs_getattr] finished\n");
 	return ret;
 }
 
@@ -143,32 +143,22 @@ struct fuse_operations uffs_oper = {
 
 int main(int argc, char *argv[])
 {
-	int ret;
+    int ret;
 
-	// if (argc < 3) {
-	// 	fprintf(stderr, "Usage: %s <mount-directory> <sizeinMB> [<disk-image>]\n", argv[0]);
-	// 	return -1;
-	// }
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <mount-directory>\n", argv[0]);
+        return -1;
+    }
 
-	// if (argc == 4) {
-	// 	strcpy(filename, argv[3]);
-	// }
+    setup_ramdisk();
 
-	setup_ramdisk();
+    ret = init_uffs_fs();
+    if (ret != 0) {
+        fprintf(stderr, "Init file system fail: %d\n", ret);
+        return -1;
+    }
 
-	ret = init_uffs_fs();
-	if (ret != 0) {
-		printf("Init file system fail: %d\n", ret);
-		return -1;
-	}
-	
-	//size_t storage = NBLOCKS*sizeof(block);
-	//fprintf(stderr,"number of blocks: %d\n", NBLOCKS);
-	//fprintf(stderr,"number of nodes: %d\n", NNODES);
-	//fprintf(stderr,"Total space for storage: %lu\n", storage);
+    fprintf(stderr, "[main] init finished\n");
 
-	printf("[main] init finished\n");
-
-	argc = 2;
-	return fuse_main(argc, argv, &uffs_oper);
+    return fuse_main(argc, argv, &uffs_oper);
 }

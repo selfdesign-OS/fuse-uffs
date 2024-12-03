@@ -7,13 +7,13 @@ URET uffs_InitDevice(uffs_Device *dev)
 
     // check pages_per_block is within valid range
     if (dev->attr->pages_per_block > UFFS_MAX_PAGES_PER_BLOCK) {
-        printf("page_per_block should not exceed %d !", UFFS_MAX_PAGES_PER_BLOCK);
+        fprintf(stderr, "page_per_block should not exceed %d !", UFFS_MAX_PAGES_PER_BLOCK);
         return U_FAIL;
     }
 
 	if (dev->mem.init) {
 		if (dev->mem.init(dev) != U_SUCC) {
-			printf("Init memory allocator fail.\n");
+			fprintf(stderr, "Init memory allocator fail.\n");
 			return U_FAIL;
 		}
 	}
@@ -25,7 +25,7 @@ URET uffs_InitDevice(uffs_Device *dev)
 
 	ret = uffs_TreeInit(dev);
 	if (ret != U_SUCC) {
-		printf("fail to init tree buffers\n");
+		fprintf(stderr, "fail to init tree buffers\n");
 		// goto fail;
 	}
 

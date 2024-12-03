@@ -53,7 +53,7 @@ int uffs_SemDelete(OSSEM *sem)
 static void * sys_malloc(struct uffs_DeviceSt *dev, unsigned int size)
 {
 	dev = dev;
-    printf("system memory alloc %d bytes\n", size);
+    fprintf(stderr, "system memory alloc %d bytes\n", size);
 	return malloc(size);
 }
 
