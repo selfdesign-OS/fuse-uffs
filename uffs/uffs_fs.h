@@ -40,7 +40,7 @@
 #define _UFFS_FS_H_
 
 #include "uffs_types.h"
-// #include "uffs.h"
+#include "uffs.h"
 #include "uffs_public.h"
 #include "uffs_core.h"
 
@@ -92,7 +92,7 @@ typedef struct uffs_ObjectSt uffs_Object;
 URET uffs_InitObjectBuf(void);
 // URET uffs_ReleaseObjectBuf(void);
 // int uffs_PutAllObjectBuf(uffs_Device *dev);
-// uffs_Object * uffs_GetObject(void);
+uffs_Object * uffs_GetObject(void);
 // void uffs_PutObject(uffs_Object *obj);
 // int uffs_GetObjectIndex(uffs_Object *obj);
 // uffs_Object * uffs_GetObjectByIndex(int idx);
@@ -102,16 +102,17 @@ URET uffs_InitObjectBuf(void);
  * Re-initialize an object.
  * should call this function if you want to re-use an object.
  */
-// URET uffs_ReInitObject(uffs_Object *obj);
+URET uffs_ReInitObject(uffs_Object *obj);
 
 // URET uffs_ParseObject(uffs_Object *obj, const char *name);
+URET uffs_ParseObject(uffs_Object *obj, const char *name, uffs_Device *dev);
 
 // URET uffs_CreateObjectEx(uffs_Object *obj, uffs_Device *dev, 
 // 								   int dir, const char *name, int name_len, int oflag);
-// URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev, 
-// 								   int dir, const char *name, int name_len, int oflag);
+URET uffs_OpenObjectEx(uffs_Object *obj, uffs_Device *dev, 
+								   int dir, const char *name, int name_len, int oflag);
 
-// URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag);
+URET uffs_OpenObject(uffs_Object *obj, const char *fullname, int oflag, uffs_Device *dev);
 // URET uffs_TruncateObject(uffs_Object *obj, u32 remain);
 // URET uffs_CreateObject(uffs_Object *obj, const char *fullname, int oflag);
 

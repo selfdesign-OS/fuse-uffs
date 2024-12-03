@@ -6,7 +6,7 @@ LDFLAGS = `pkg-config fuse --libs`
 # 파일 이름 설정
 TARGET = mkuffs
 SRCS = mkuffs.c uffs_fd.c uffs_fileem.c uffs_fs.c uffs_init.c uffs_mtb.c uffs_os.c uffs_pool.c uffs_tree.c
-HEADERS = uffs_buf.h uffs_config.h uffs_core.h uffs_device.h uffs_fd.h uffs_fileem.h uffs_find.h uffs_flash.h uffs_fs.h uffs_mem.h uffs_mtb.h uffs_os.h uffs_pool.h uffs_public.h uffs_tree.h uffs_types.h 
+HEADERS = uffs_buf.h uffs_config.h uffs_core.h uffs_device.h uffs_fd.h uffs_fileem.h uffs_find.h uffs_flash.h uffs_fs.h uffs_mem.h uffs_mtb.h uffs_os.h uffs_pool.h uffs_public.h uffs_tree.h uffs_types.h uffs.h
 
 # 오브젝트 파일 생성
 OBJS = $(SRCS:.c=.o)

@@ -24,3 +24,44 @@ int uffs_Mount(uffs_Device *dev) {
 		return -1;
 	}
 }
+
+/**
+ * find the matched mount point from a given full absolute path.
+ *
+ * \param[in] path full path
+ * \return the length of mount point.
+ */
+int uffs_GetMatchedMountPointSize(const char *path)
+{
+	printf("[uffs_GetMatchedMountPointSize] path: %s", path);
+	return 0;
+
+	// int pos;
+	// uffs_Device *dev;
+
+	// if (path[0] != '/')
+	// 	return 0;
+
+	// pos = strlen(path);
+
+	// while (pos > 0) {
+	// 	if ((dev = uffs_GetDeviceFromMountPointEx(path, pos)) != NULL ) {
+	// 		uffs_PutDevice(dev);
+	// 		return pos;
+	// 	}
+	// 	else {
+	// 		if (path[pos-1] == '/') 
+	// 			pos--;
+	// 		//back forward search the next '/'
+	// 		for (; pos > 0 && path[pos-1] != '/'; pos--)
+	// 			;
+	// 	}
+	// }
+
+	// return pos;
+}
+
+void uffs_PutDevice(uffs_Device *dev)
+{
+	dev->ref_count--;
+}

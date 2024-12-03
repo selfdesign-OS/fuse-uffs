@@ -9,7 +9,7 @@
 
 #include "uffs_types.h"
 #include "uffs_core.h"
-// #include "uffs.h"
+#include "uffs.h"
 #include "uffs_pool.h"
 
 #include "uffs_device.h"

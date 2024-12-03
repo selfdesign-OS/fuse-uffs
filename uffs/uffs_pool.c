@@ -55,3 +55,22 @@ URET uffs_PoolInit(uffs_Pool *pool,
 
 	return U_SUCC;
 }
+
+/**
+ * \brief Get a buffer from the memory pool.
+ * \param[in] pool memory pool
+ * \return Returns a pointer to the buffer or NULL if none is available.
+ */
+void *uffs_PoolGet(uffs_Pool *pool)
+{
+	uffs_PoolEntry *e;
+
+	if (!uffs_Assert(pool != NULL, "pool missing"))
+		return NULL;
+
+	e = pool->free_list;
+	if (e)
+		pool->free_list = e->next;
+
+	return e;
+}

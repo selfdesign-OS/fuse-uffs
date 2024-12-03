@@ -82,9 +82,46 @@ static int init_uffs_fs(void)
 	return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
 }
 
-int uffs_getattr(const char *path, struct stat *stbuf)
+int uffs_getattr(const char *name, struct stat *stbuf)
 {
-    return 0;
+	printf("[uffs_getattr] called\n");
+    uffs_Object *obj;
+	int ret = 0;
+	int err = 0;
+	URET result;
+
+	// uffs_GlobalFsLockLock();
+
+	obj = uffs_GetObject();
+	if (obj) {
+		if (*name && name[strlen(name) - 1] == '/') {
+			result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR, &conf_device);
+		}
+		else {
+			if ((result = uffs_OpenObject(obj, name, UO_RDONLY)) != U_SUCC, &conf_device)	// try file
+				result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR, &conf_device);	// then try dir
+		}
+		if (result == U_SUCC) {
+			ret = 0;
+			// ret = do_stat(obj, buf);
+			// uffs_CloseObject(obj);
+		}
+		else {
+			err = uffs_GetObjectErr(obj);
+			ret = -1;
+		}
+		// uffs_PutObject(obj);
+	}
+	else {
+		err = UENOMEM;
+		ret = -1;
+	}
+
+	// uffs_set_error(-err);
+	// uffs_GlobalFsLockUnlock();
+
+	printf("[uffs_getattr] finished\n");
+	return ret;
 }
 
 int uffs_open(const char *path, struct fuse_file_info *fi)

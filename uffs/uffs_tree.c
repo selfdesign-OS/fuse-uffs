@@ -7,6 +7,8 @@
 
 #include <string.h>
 
+#define TPOOL(dev) &(dev->mem.tree_pool)
+
 /** 
  * \brief initialize tree buffers
  * \param[in] dev uffs device
@@ -62,4 +64,36 @@ URET uffs_TreeInit(uffs_Device *dev)
 	dev->tree.max_serial = ROOT_DIR_SERIAL;
 	
 	return U_SUCC;
+}
+
+TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev,
+									  const char *name, u32 len,
+									  u16 sum, u16 parent)
+{
+	int i;
+	u16 x;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+	
+	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
+		x = tree->dir_entry[i];
+		while (x != EMPTY_NODE) {
+			node = FROM_IDX(x, TPOOL(dev));
+			if (
+                // node->u.dir.checksum == sum &&
+					node->u.dir.parent == parent) {
+				// //read file name from flash, and compare...
+				// if (uffs_TreeCompareFileName(dev, name, len, sum,
+				// 							node, UFFS_TYPE_DIR) == U_TRUE) {
+				// 	//Got it!
+				// 	return node;
+				// }
+                return node;
+			}
+			x = node->hash_next;
+		}
+	}
+
+	return NULL;
+
 }

@@ -3,7 +3,7 @@
 
 #include "uffs_types.h"
 #include "uffs_core.h"
-// #include "uffs.h"
+#include "uffs.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -38,7 +38,7 @@ int uffs_Mount(uffs_Device *dev);
 // uffs_MountTable * uffs_MtbGetUnMounted(void);
 
 // /** get matched mount point from absolute path */
-// int uffs_GetMatchedMountPointSize(const char *path);			
+int uffs_GetMatchedMountPointSize(const char *path);			
 
 // /** get uffs device from mount point */
 // uffs_Device * uffs_GetDeviceFromMountPoint(const char *mount);	
@@ -50,7 +50,7 @@ int uffs_Mount(uffs_Device *dev);
 // const char * uffs_GetDeviceMountPoint(uffs_Device *dev);		
 
 // /** down crease uffs device references by uffs_GetDeviceXXX() */
-// void uffs_PutDevice(uffs_Device *dev);							
+void uffs_PutDevice(uffs_Device *dev);							
 
 #ifdef __cplusplus
 }

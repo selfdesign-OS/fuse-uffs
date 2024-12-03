@@ -72,7 +72,7 @@ URET uffs_PoolInit(uffs_Pool *pool, void *mem, u32 mem_size, u32 buf_size, u32 n
 
 // UBOOL uffs_PoolVerify(uffs_Pool *pool, void *p);
 
-// void *uffs_PoolGet(uffs_Pool *pool);
+void *uffs_PoolGet(uffs_Pool *pool);
 // void *uffs_PoolGetLocked(uffs_Pool *pool);
 
 // int uffs_PoolPut(uffs_Pool *pool, void *p);

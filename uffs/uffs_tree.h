@@ -191,7 +191,7 @@ URET uffs_TreeInit(uffs_Device *dev);
 // TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial);
 // TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent);
 // TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
-// TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
 // TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 
 
