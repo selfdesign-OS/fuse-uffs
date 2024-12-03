@@ -123,5 +123,9 @@ URET uffs_DirEntryBufInit(void);
 /*  init functions                                                                     */
 /************************************************************************/
 URET uffs_InitDevice(uffs_Device *dev);
+// URET uffs_ReleaseDevice(uffs_Device *dev);
+
+URET uffs_InitFileSystemObjects(void);
+// URET uffs_ReleaseFileSystemObjects(void);
 
 #endif
