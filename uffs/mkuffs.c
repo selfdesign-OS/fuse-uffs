@@ -98,7 +98,7 @@ int uffs_getattr(const char *name, struct stat *stbuf)
 			result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR, &conf_device);
 		}
 		else {
-			if ((result = uffs_OpenObject(obj, name, UO_RDONLY)) != U_SUCC, &conf_device)	// try file
+			if ((result = uffs_OpenObject(obj, name, UO_RDONLY, &conf_device)) != U_SUCC)	// try file
 				result = uffs_OpenObject(obj, name, UO_RDONLY | UO_DIR, &conf_device);	// then try dir
 		}
 		if (result == U_SUCC) {
@@ -166,6 +166,8 @@ int main(int argc, char *argv[])
 	//fprintf(stderr,"number of blocks: %d\n", NBLOCKS);
 	//fprintf(stderr,"number of nodes: %d\n", NNODES);
 	//fprintf(stderr,"Total space for storage: %lu\n", storage);
+
+	printf("[main] init finished\n");
 
 	argc = 2;
 	return fuse_main(argc, argv, &uffs_oper);

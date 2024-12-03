@@ -65,12 +65,33 @@ void *uffs_PoolGet(uffs_Pool *pool)
 {
 	uffs_PoolEntry *e;
 
-	if (!uffs_Assert(pool != NULL, "pool missing"))
-		return NULL;
+	// TODO: pool check
+	// if (!uffs_Assert(pool != NULL, "pool missing"))
+	// 	return NULL;
 
 	e = pool->free_list;
 	if (e)
 		pool->free_list = e->next;
 
 	return e;
+}
+
+/**
+ * \brief Gets a buffer by index (offset).
+ * This method returns a buffer from the memory pool by index.
+ * \param[in] pool memory pool
+ * \param[in] index index
+ * \return Returns a pointer to the buffer.
+ */
+void *uffs_PoolGetBufByIndex(uffs_Pool *pool, u32 index)
+{
+	// TODO: pool check
+	// if (!uffs_Assert(pool != NULL, "pool missing") ||
+	// 	!uffs_Assert(index < pool->num_bufs,
+	// 			"index(%d) out of range(max %d)", index, pool->num_bufs))
+	// {
+	// 	return NULL;
+	// }
+
+	return (u8 *) pool->mem + index * pool->buf_size;
 }

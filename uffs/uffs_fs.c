@@ -281,21 +281,21 @@ URET uffs_ParseObject(uffs_Object *obj, const char *name, uffs_Device *dev)
 	return (obj->err == UENOERR ? U_SUCC : U_FAIL);
 }
 
-static void do_ReleaseObjectResource(uffs_Object *obj)
-{
-	if (obj) {
-		if (obj->dev) {
-			if (HAVE_BADBLOCK(obj->dev))
-				uffs_BadBlockRecover(obj->dev);
-			if (obj->dev_lock_count > 0) {
-				uffs_ObjectDevUnLock(obj);
-			}
-			uffs_PutDevice(obj->dev);
-			obj->dev = NULL;
-			obj->open_succ = U_FALSE;
-		}
-	}
-}
+// static void do_ReleaseObjectResource(uffs_Object *obj)
+// {
+// 	if (obj) {
+// 		if (obj->dev) {
+// 			if (HAVE_BADBLOCK(obj->dev))
+// 				uffs_BadBlockRecover(obj->dev);
+// 			if (obj->dev_lock_count > 0) {
+// 				uffs_ObjectDevUnLock(obj);
+// 			}
+// 			uffs_PutDevice(obj->dev);
+// 			obj->dev = NULL;
+// 			obj->open_succ = U_FALSE;
+// 		}
+// 	}
+// }
 
 /**
  * Open a UFFS object
@@ -320,7 +320,7 @@ URET uffs_OpenObject(uffs_Object *obj, const char *name, int oflag, uffs_Device 
 		// 							obj->name, obj->name_len, oflag);
  	}
  	if (ret != U_SUCC)
- 		do_ReleaseObjectResource(obj);
+ 		// do_ReleaseObjectResource(obj);
 
 	return ret;
 }
