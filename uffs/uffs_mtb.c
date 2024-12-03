@@ -3,7 +3,7 @@
 #include "uffs_public.h"
 #include "uffs_tree.h"
 #include "uffs_mtb.h"
-// #include "uffs_fd.h"
+#include "uffs_fd.h"
 // #include "uffs_utils.h"
 #include "uffs_fs.h"
 // #include "uffs_badblock.h"
