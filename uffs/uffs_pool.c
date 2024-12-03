@@ -1,4 +1,4 @@
-// #include "uffs_config.h" 
+#include "uffs_config.h" 
 #include "uffs_types.h"
 #include "uffs_os.h"
 #include "uffs_public.h"

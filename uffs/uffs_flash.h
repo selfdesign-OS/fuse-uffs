@@ -4,7 +4,7 @@
 #include "uffs_types.h"
 #include "uffs_core.h"
 #include "uffs_device.h"
-// #include "uffs_fs.h"
+#include "uffs_fs.h"
 
 #define UFFS_SPARE_LAYOUT_SIZE	6	//!< maximum spare layout array size, 2 segments
 

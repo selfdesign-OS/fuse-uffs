@@ -42,3 +42,15 @@ URET uffs_InitDevice(uffs_Device *dev)
 
 // 	return U_FAIL;
 }
+
+URET uffs_InitFileSystemObjects(void)
+{
+	if (uffs_InitObjectBuf() == U_SUCC) {
+		if (uffs_DirEntryBufInit() == U_SUCC) {
+			// uffs_InitGlobalFsLock();
+			return U_SUCC;
+		}
+	}
+
+	return U_FAIL;
+}

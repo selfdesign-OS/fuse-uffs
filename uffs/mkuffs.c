@@ -5,7 +5,7 @@
 
 #include "uffs_os.h"
 #include "uffs_public.h"
-// #include "uffs_fs.h"
+#include "uffs_fs.h"
 // #include "uffs_utils.h"
 #include "uffs_core.h"
 #include "uffs_mtb.h"
@@ -79,9 +79,7 @@ static int init_uffs_fs(void)
 
 	uffs_Mount(dev);
 
-	// TODO: must edit
-	return 0;
-	// return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
+	return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
 }
 
 int uffs_getattr(const char *path, struct stat *stbuf)
