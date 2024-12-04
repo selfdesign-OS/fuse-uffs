@@ -84,7 +84,7 @@ static int init_uffs_fs(void)
 
 int uffs_getattr(const char *name, struct stat *stbuf)
 {
-	fprintf(stderr, "[uffs_getattr] called\n");
+	fprintf(stdout, "[uffs_getattr] called\n");
     uffs_Object *obj;
 	int ret = 0;
 	int err = 0;
@@ -124,6 +124,14 @@ int uffs_getattr(const char *name, struct stat *stbuf)
 	return ret;
 }
 
+static int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+			 off_t offset, struct fuse_file_info *fi)
+{
+	fprintf(stdout, "[uffs_readdir] called\n");
+
+	return 0;
+}
+
 int uffs_open(const char *path, struct fuse_file_info *fi)
 {   
     return 0;
@@ -137,6 +145,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 
 struct fuse_operations uffs_oper = {
 	.getattr	= uffs_getattr,
+	.readdir	= uffs_readdir,
 	.open       = uffs_open,
     .read       = uffs_read
 };
@@ -160,5 +169,5 @@ int main(int argc, char *argv[])
 
     fprintf(stderr, "[main] init finished\n");
 
-    return fuse_main(argc, argv, &uffs_oper);
+    return fuse_main(argc, argv, &uffs_oper, NULL);
 }
