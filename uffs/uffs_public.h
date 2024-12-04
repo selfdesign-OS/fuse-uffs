@@ -119,6 +119,87 @@ URET uffs_DirEntryBufInit(void);
 // uffs_Pool * uffs_DirEntryBufGetPool(void);
 // int uffs_DirEntryBufPutAll(uffs_Device *dev);
 
+// URET uffs_NewBlock(uffs_Device *dev, u16 block, uffs_Tags *tag, uffs_Buf *buf);
+// URET uffs_BlockRecover(uffs_Device *dev, uffs_BlockInfo *old, u16 newBlock);
+// URET uffs_PageRecover(uffs_Device *dev, 
+// 					  uffs_BlockInfo *bc, 
+// 					  u16 oldPage, 
+// 					  u16 newPage, 
+// 					  uffs_Buf *buf);
+// int uffs_FindFreePageInBlock(uffs_Device *dev, uffs_BlockInfo *bc);
+// u16 uffs_FindBestPageInBlock(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
+// u16 uffs_FindFirstFreePage(uffs_Device *dev, uffs_BlockInfo *bc, u16 pageFrom);
+// u16 uffs_FindPageInBlockWithPageId(uffs_Device *dev, uffs_BlockInfo *bc, u16 page_id);
+
+/** 
+ * \struct uffs_MiniHeaderSt
+ * \brief the mini header resides on the head of page data
+ */
+struct uffs_MiniHeaderSt {
+	u8 status;
+	u8 reserved;
+	u16 crc;
+};
+
+/**
+ * \struct uffs_TagStoreSt
+ * \brief uffs tag, 8 bytes, will be store in page spare area.
+ */
+struct uffs_TagStoreSt {
+	u32 dirty:1;		//!< 0: dirty, 1: clear
+	u32 valid:1;		//!< 0: valid, 1: invalid
+	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
+	u32 block_ts:2;		//!< time stamp of block;
+	u32 data_len:12;	//!< length of page data
+	u32 serial:14;		//!< serial number
+
+	u32 parent:10;		//!< parent's serial number
+	u32 page_id:UFFS_TAG_PAGE_ID_SIZE_BITS;		//!< page id
+#if UFFS_TAG_RESERVED_BITS != 0
+	u32 reserved:UFFS_TAG_RESERVED_BITS;		//!< reserved, for UFFS2
+#endif
+	u32 tag_ecc:12;		//!< tag ECC
+};
+
+/** 
+ * \struct uffs_TagsSt
+ */
+struct uffs_TagsSt {
+	struct uffs_TagStoreSt s;		/* store must be the first member */
+
+	/** data_sum for file or dir name */
+	u16 data_sum;
+
+	/** internal used */
+	u8 seal_byte;			//!< seal byte.
+};
+
+u8 uffs_MakeSum8(const void *p, int len);
+u16 uffs_MakeSum16(const void *p, int len);
+// URET uffs_CreateNewFile(uffs_Device *dev, u16 parent, u16 serial, uffs_BlockInfo *bc, uffs_FileInfo *fi);
+
+// int uffs_GetBlockFileDataLength(uffs_Device *dev, uffs_BlockInfo *bc, u8 type);
+// UBOOL uffs_IsPageErased(uffs_Device *dev, uffs_BlockInfo *bc, u16 page);
+// int uffs_GetFreePagesCount(uffs_Device *dev, uffs_BlockInfo *bc);
+// UBOOL uffs_IsDataBlockReguFull(uffs_Device *dev, uffs_BlockInfo *bc);
+// UBOOL uffs_IsThisBlockUsed(uffs_Device *dev, uffs_BlockInfo *bc);
+
+// int uffs_GetBlockTimeStamp(uffs_Device *dev, uffs_BlockInfo *bc);
+
+// int uffs_GetDeviceUsed(uffs_Device *dev);
+// int uffs_GetDeviceFree(uffs_Device *dev);
+// int uffs_GetDeviceTotal(uffs_Device *dev);
+
+// URET uffs_LoadMiniHeader(uffs_Device *dev, int block, u16 page, struct uffs_MiniHeaderSt *header);
+
+
+// /* some functions from uffs_fd.c */
+// void uffs_FdSignatureIncrease(void);
+// URET uffs_DirEntryBufInit(void);
+// URET uffs_DirEntryBufRelease(void);
+// uffs_Pool * uffs_DirEntryBufGetPool(void);
+// int uffs_DirEntryBufPutAll(uffs_Device *dev);
+
 /************************************************************************/
 /*  init functions                                                                     */
 /************************************************************************/

@@ -66,6 +66,49 @@ URET uffs_TreeInit(uffs_Device *dev)
 	return U_SUCC;
 }
 
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev,
+										const char *name,
+										u32 len,
+										u16 sum, u16 parent)
+{
+	int i;
+	u16 x;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+	
+	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
+		x = tree->file_entry[i];
+		while (x != EMPTY_NODE) {
+			node = FROM_IDX(x, TPOOL(dev));
+			if (node->u.file.checksum == sum && node->u.file.parent == parent) {
+				//read file name from flash, and compare...
+				if (uffs_TreeCompareFileName(dev, name, len, sum, 
+												node, UFFS_TYPE_FILE) == U_TRUE) {
+					//Got it!
+					return node;
+				}
+			}
+			x = node->hash_next;
+		}
+	}
+
+	return NULL;
+}
+
+/** search suspend list */
+TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial)
+{
+	TreeNode *node = dev->tree.suspend;
+	while (node) {
+		if (node->u.list.u.serial == serial)
+			break;
+		
+		node = node->u.list.next;
+	}
+
+	return node;
+}
+
 TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev,
 									  const char *name, u32 len,
 									  u16 sum, u16 parent)
@@ -96,4 +139,74 @@ TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev,
 
 	return NULL;
 
+}
+
+TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial)
+{
+	int hash;
+	u16 x;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+
+	hash = serial & FILE_NODE_HASH_MASK;
+	x = tree->file_entry[hash];
+	while (x != EMPTY_NODE) {
+		node = FROM_IDX(x, TPOOL(dev));
+		if (node->u.file.serial == serial) {
+			return node;
+		}
+		else {
+			x = node->hash_next;
+		}
+	}
+	return NULL;
+}
+
+TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial)
+{
+	int hash;
+	u16 x;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+
+	hash = serial & DIR_NODE_HASH_MASK;
+	x = tree->dir_entry[hash];
+	while (x != EMPTY_NODE) {
+		node = FROM_IDX(x, TPOOL(dev));
+		if (node->u.dir.serial == serial) {
+			return node;
+		}
+		else {
+			x = node->hash_next;
+		}
+	}
+	return NULL;
+}
+
+/** 
+ * find a free file or dir serial NO
+ * \param[in] dev uffs device
+ * \return if no free serial found, return #INVALID_UFFS_SERIAL
+ */
+u16 uffs_FindFreeFsnSerial(uffs_Device *dev)
+{
+	u16 i;
+	TreeNode *node;
+
+	//TODO!! Do we need a faster serial number generating method?
+	//		 it depends on how often creating files or directories
+
+	for (i = ROOT_DIR_SERIAL + 1; i < MAX_UFFS_FSN; i++) {
+		node = uffs_TreeFindDirNode(dev, i);
+		if (node == NULL) {
+			node = uffs_TreeFindFileNode(dev, i);
+			if (node == NULL) {
+				node = uffs_TreeFindSuspendNode(dev, i);
+				if (node == NULL)
+					return i;
+			}
+		}
+	}
+
+	return INVALID_UFFS_SERIAL;
 }

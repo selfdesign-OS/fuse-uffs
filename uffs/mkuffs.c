@@ -82,7 +82,7 @@ static int init_uffs_fs(void)
 	return uffs_InitFileSystemObjects() == U_SUCC ? 0 : -1;
 }
 
-int uffs_getattr(const char *name, struct stat *stbuf)
+int uffs_getattr(const char *name, struct stat *buf)
 {
 	fprintf(stdout, "[uffs_getattr] called\n");
     uffs_Object *obj;
@@ -103,8 +103,8 @@ int uffs_getattr(const char *name, struct stat *stbuf)
 		}
 		if (result == U_SUCC) {
 			ret = 0;
-			// ret = do_stat(obj, buf);
-			// uffs_CloseObject(obj);
+			ret = do_stat(obj, buf);
+			uffs_CloseObject(obj);
 		}
 		else {
 			err = uffs_GetObjectErr(obj);

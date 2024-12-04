@@ -185,12 +185,12 @@ struct uffs_TreeSt {
 URET uffs_TreeInit(uffs_Device *dev);
 // URET uffs_TreeRelease(uffs_Device *dev);
 // URET uffs_BuildTree(uffs_Device *dev);
-// u16 uffs_FindFreeFsnSerial(uffs_Device *dev);
-// TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial);
+u16 uffs_FindFreeFsnSerial(uffs_Device *dev);
+TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial);
 // TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent);
-// TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial);
+TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial);
 // TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent);
-// TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
 TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
 // TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 
@@ -202,7 +202,7 @@ TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 le
 // TreeNode * uffs_TreeFindBadNodeByBlock(uffs_Device *dev, u16 block);
 
 // void uffs_TreeSuspendAdd(uffs_Device *dev, TreeNode *node);
-// TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial);
+TreeNode * uffs_TreeFindSuspendNode(uffs_Device *dev, u16 serial);
 // void uffs_TreeRemoveSuspendNode(uffs_Device *dev, TreeNode *node);
 
 #define SEARCH_REGION_DIR		1

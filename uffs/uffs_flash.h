@@ -6,6 +6,16 @@
 #include "uffs_device.h"
 #include "uffs_fs.h"
 
+/** flash operation return code */
+#define UFFS_FLASH_NO_ERR		0		//!< no error
+#define UFFS_FLASH_ECC_OK		1		//!< bit-flip found, but corrected by ECC
+#define UFFS_FLASH_NOT_SEALED	2		//!< page spare area is not sealed properly (only for ReadPageWithLayout())
+#define UFFS_FLASH_IO_ERR		-1		//!< I/O error
+#define UFFS_FLASH_ECC_FAIL		-2		//!< ECC failed
+#define UFFS_FLASH_BAD_BLK		-3		//!< bad block
+#define UFFS_FLASH_CRC_ERR		-4		//!< CRC failed
+#define UFFS_FLASH_UNKNOWN_ERR	-100	//!< unkown error?
+
 #define UFFS_SPARE_LAYOUT_SIZE	6	//!< maximum spare layout array size, 2 segments
 
 /** spare layout options (uffs_StorageAttrSt.layout_opt) */

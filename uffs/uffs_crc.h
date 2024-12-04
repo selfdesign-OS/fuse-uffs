@@ -30,30 +30,17 @@
   on this file might be covered by the GNU General Public License.
 */
 
-#ifndef _UFFS_CORE_H_
-#define _UFFS_CORE_H_
+/**
+ * \file uffs_crc.h
+ * \author Ricky Zheng, created 23 Nov, 2011
+ */
 
-#ifdef __cplusplus
-extern "C"{
-#endif
+#ifndef _UFFS_CRC_H_
+#define _UFFS_CRC_H_
 
-/** \typedef uffs_Device */
-typedef struct uffs_DeviceSt		uffs_Device;
-// /** \typedef uffs_FlashOps */
-// typedef struct uffs_FlashOpsSt		uffs_FlashOps;
+#include "uffs_types.h"
 
-typedef struct uffs_BlockInfoSt uffs_BlockInfo;
-// typedef struct uffs_PageSpareSt uffs_PageSpare;
-typedef struct uffs_TagsSt			uffs_Tags;		//!< UFFS page tags
-// typedef struct uffs_TagStoreSt      uffs_TagStore;  //!< UFFS page tags physical store structure
-
-typedef struct uffs_BufSt uffs_Buf;
-
-
-#ifdef __cplusplus
-}
-#endif
-
-
+u16 uffs_crc16update(const void *data, int length, u16 crc);
+u16 uffs_crc16sum(const void *data, int length);
 
 #endif
