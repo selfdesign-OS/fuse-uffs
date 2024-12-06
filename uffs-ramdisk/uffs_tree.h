@@ -94,8 +94,8 @@ TreeNode * uffs_TreeFindFileNode(uffs_Device *dev, u16 serial);
 TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent);
 TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial);
 TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent);
-TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
-TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent);
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent);
+TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent);
 TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
@@ -103,6 +103,7 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 // custom 
 #define UDIR 0
 #define DIR 1
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isDir);
+#define ROOT_SERIAL 0
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name);
 
 #endif

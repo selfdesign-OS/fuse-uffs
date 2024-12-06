@@ -45,14 +45,11 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 	memset(stbuf, 0, sizeof(struct stat));
 
 	if (strcmp(path, "/") == 0) {
-		result = uffs_TreeFindNodeByName(&dev, &node, path, DIR);
+		result = uffs_TreeFindNodeByName(&dev, &node, path);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, &node, path, UDIR) != U_SUCC) // try file
-			result = uffs_TreeFindNodeByName(&dev, &node, path, DIR); // try dir
-	}
-	if (result != U_SUCC) {
-		fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
+		if (result = uffs_TreeFindNodeByName(&dev, &node, path) != U_SUCC)
+			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
 	}
 
 	stbuf->st_mode = S_IFDIR | node->info.mode;
@@ -67,6 +64,8 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 			 off_t offset, struct fuse_file_info *fi)
 {
 	fprintf(stdout, "[uffs_readdir] called\n");
+
+	
 
 	fprintf(stdout, "[uffs_readdir] finished\n");
 	return 0;

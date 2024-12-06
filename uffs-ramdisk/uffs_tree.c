@@ -45,8 +45,8 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
     // 루트 노드 DirhSt 초기화
     root->u.dir.block = 0;       // 루트 블록 (일반적으로 0)
-    root->u.dir.parent = EMPTY_NODE; // 루트는 부모가 없음
-    root->u.dir.serial = 0;      // 루트의 고유 시리얼 번호 (0으로 초기화)
+    root->u.dir.parent = ROOT_SERIAL; // 루트는 부모가 없음
+    root->u.dir.serial = ROOT_SERIAL; // 루트의 고유 시리얼 번호 (0으로 초기화)
 
     // 루트 노드 FileInfo 초기화
     root->info.create_time = GET_CURRENT_TIME(); // 현재 시간 함수 호출
@@ -73,33 +73,35 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
 // node찾아서 매개변수 node에 넣어주기
 // return: U_SUCC 또는 U_FAIL
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isDir) {
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindNodeByName] called\n");
 
     char *token;
-    char *last_token;
     const char delimiter[] = "/";
 
     token = strtok(name, delimiter);
     
-    int hash = GET_DIR_HASH(0);
+    int hash = GET_DIR_HASH(ROOT_SERIAL);
     TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *tmp_node;
 
     while (token != NULL) {
         printf("[uffs_TreeFindNodeByName] directory: %s\n", token);
 
-        // TODO: should implement to go down tree
-
-        strcpy(last_token, token);
+        // 디렉터리 노드 찾기
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        // 없으면 파일에서 찾기
+        if (tmp_node == NULL) {
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        }
+        if (tmp_node == NULL) {
+            return U_FAIL;
+        }
+        // cur_node에 담아 
+        cur_node = tmp_node;
+        
         token = strtok(NULL, delimiter);
     }
-
-    // if (isDir == DIR) {
-        
-    // }
-    // else (isDir == UDIR) {
-
-    // }
 
     *node = cur_node;
 
@@ -120,14 +122,50 @@ TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial) {
 }
 
 TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent) {
+	return NULL;
+}
+
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
+    int i;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+	
+	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
+		node = tree->file_entry[i];
+		while (node != EMPTY_NODE) {
+			if (node->u.file.parent == parent) {
+				//read file name from flash, and compare...
+				if (strcmp(node->info.name, name) == 0 && node->info.name_len == len) {
+					//Got it!
+					return node;
+				}
+			}
+			node = node->hash_next;
+		}
+	}
+
     return NULL;
 }
 
-TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent) {
-    return NULL;
-}
+TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
+    int i;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+	
+	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
+		node = tree->dir_entry[i];
+		while (node != EMPTY_NODE) {
+			if (node->u.dir.parent == parent) {
+				//read file name from flash, and compare...
+				if (strcmp(node->info.name, name) == 0 && node->info.name_len == len) {
+					//Got it!
+					return node;
+				}
+			}
+			node = node->hash_next;
+		}
+	}
 
-TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 sum, u16 parent) {
     return NULL;
 }   
 
