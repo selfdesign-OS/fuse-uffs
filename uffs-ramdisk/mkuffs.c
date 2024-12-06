@@ -61,15 +61,88 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 }
 
 int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-			 off_t offset, struct fuse_file_info *fi)
+                 off_t offset, struct fuse_file_info *fi)
 {
-	fprintf(stdout, "[uffs_readdir] called\n");
+    fprintf(stdout, "[uffs_readdir] called\n");
+    fprintf(stdout, "[uffs_readdir] path: %s\n", path);
 
-	
+    URET result;
+    TreeNode *node = NULL;
+    char *path_copy = NULL;
+    u16 parent_serial;
 
-	fprintf(stdout, "[uffs_readdir] finished\n");
-	return 0;
+    // path를 strtok에서 안전하게 사용하기 위해 복사
+    path_copy = strdup(path);
+    if (!path_copy) {
+        fprintf(stderr, "[uffs_readdir] memory allocation failed\n");
+        return -ENOMEM;
+    }
+
+    // 해당 path에 대응하는 node 찾기
+    result = uffs_TreeFindNodeByName(&dev, &node, path_copy);
+    free(path_copy); // TreeFindNodeByName 호출 후 복사본은 더 이상 필요 없음
+    path_copy = NULL;
+
+    if (result != U_SUCC || node == NULL) {
+        fprintf(stderr, "[uffs_readdir] node not found for path: %s\n", path);
+        return -ENOENT;
+    }
+
+    // TODO: 호출한 path의 node가 디렉토리인지 확인
+    // mode_t mode = S_IFDIR | node->info.mode;
+    // if (!S_ISDIR(mode)) {
+    //     fprintf(stderr, "[uffs_readdir] not a directory: %s\n", path);
+    //     return -ENOTDIR;
+    // }
+
+    // 현재 디렉토리의 serial 번호
+    parent_serial = node->u.dir.serial;
+
+    // '.'과 '..' 추가
+    // '.'은 현재 디렉토리 자신
+    filler(buf, ".", NULL, 0);
+
+    // '..'은 상위 디렉토리. 루트일 경우 부모가 자기 자신일 수도 있으니
+    // 실제로 상위가 없거나 ROOT_SERIAL 일 경우에는 루트로 매핑
+    if (parent_serial != ROOT_SERIAL) {
+        filler(buf, "..", NULL, 0);
+    } else {
+        // 루트 디렉토리면 상위가 없으나 Fuse는 '..'를 요구할 수 있으니 동일하게 루트로 처리
+        filler(buf, "..", NULL, 0);
+    }
+
+    // 해당 디렉토리 하위에 존재하는 디렉토리 엔트리 출력
+    for (int i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
+        TreeNode *dnode = dev.tree.dir_entry[i];
+        while (dnode != EMPTY_NODE) {
+            if (dnode->u.dir.parent == parent_serial) {
+                // '.'와 '..'를 제외한 실제 하위 디렉토리 엔트리 이름 추가
+                if (strcmp(dnode->info.name, "/") != 0) { 
+                    // 루트 노드 이름 '/'는 하위에 직접 표시하지 않음 
+                    // 필요에 따라 이 조건은 제거할 수 있음
+                    filler(buf, dnode->info.name, NULL, 0);
+                }
+            }
+            dnode = dnode->hash_next;
+        }
+    }
+
+    // 해당 디렉토리 하위에 존재하는 파일 엔트리 출력
+    for (int i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
+        TreeNode *fnode = dev.tree.file_entry[i];
+        while (fnode != EMPTY_NODE) {
+            if (fnode->u.file.parent == parent_serial) {
+                // 파일 이름 출력
+                filler(buf, fnode->info.name, NULL, 0);
+            }
+            fnode = fnode->hash_next;
+        }
+    }
+
+    fprintf(stdout, "[uffs_readdir] finished\n");
+    return 0;
 }
+
 
 struct fuse_operations uffs_oper = {
 	.init		= uffs_init,
