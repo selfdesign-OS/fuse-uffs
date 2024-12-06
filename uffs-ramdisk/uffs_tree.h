@@ -103,6 +103,6 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 // custom 
 #define UDIR 0
 #define DIR 1
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode *node, const char *name, int isDir);
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isDir);
 
 #endif

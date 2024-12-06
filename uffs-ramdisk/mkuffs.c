@@ -45,18 +45,19 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 	memset(stbuf, 0, sizeof(struct stat));
 
 	if (strcmp(path, "/") == 0) {
-		result = uffs_TreeFindNodeByName(&dev, node, path, DIR);
+		result = uffs_TreeFindNodeByName(&dev, &node, path, DIR);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, node, path, UDIR) != U_SUCC) // try file
-			result = uffs_TreeFindNodeByName(&dev, node, path, DIR); // try dir
+		if (result = uffs_TreeFindNodeByName(&dev, &node, path, UDIR) != U_SUCC) // try file
+			result = uffs_TreeFindNodeByName(&dev, &node, path, DIR); // try dir
+	}
+	if (result != U_SUCC) {
+		fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
 	}
 
-	stbuf->st_mode = S_IFDIR | 0755;
-	stbuf->st_nlink = 2;	
-	// stbuf->st_mode = S_IFDIR | node->info.mode;
-	// stbuf->st_nlink = node->info.nlink;	
-	// stbuf->st_size = node->info.len;
+	stbuf->st_mode = S_IFDIR | node->info.mode;
+	stbuf->st_nlink = node->info.nlink;	
+	stbuf->st_size = node->info.len;
 	
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;

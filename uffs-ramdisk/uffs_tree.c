@@ -73,10 +73,11 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
 // node찾아서 매개변수 node에 넣어주기
 // return: U_SUCC 또는 U_FAIL
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode *node, const char *name, int isDir) {
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isDir) {
     fprintf(stdout, "[uffs_TreeFindNodeByName] called\n");
 
     char *token;
+    char *last_token;
     const char delimiter[] = "/";
 
     token = strtok(name, delimiter);
@@ -87,10 +88,20 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode *node, const char *name,
     while (token != NULL) {
         printf("[uffs_TreeFindNodeByName] directory: %s\n", token);
 
+        // TODO: should implement to go down tree
+
+        strcpy(last_token, token);
         token = strtok(NULL, delimiter);
     }
 
-    node = cur_node;
+    // if (isDir == DIR) {
+        
+    // }
+    // else (isDir == UDIR) {
+
+    // }
+
+    *node = cur_node;
 
     fprintf(stdout, "[uffs_TreeFindNodeByName] finished\n");
     return U_SUCC;
