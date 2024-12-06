@@ -10,7 +10,7 @@
 
 URET uffs_TreeInit(uffs_Device *dev)
 {
-    fprintf(stdout, "[uffs_TreeInit] called");
+    fprintf(stdout, "[uffs_TreeInit] called\n");
 
     int i;
 
@@ -37,7 +37,7 @@ static u32 GET_CURRENT_TIME() {
 }
 
 URET uffs_BuildTree(uffs_Device *dev) {
-    fprintf(stdout, "[uffs_BuildTree] called");
+    fprintf(stdout, "[uffs_BuildTree] called\n");
 
     TreeNode *root = (TreeNode *) malloc(sizeof(TreeNode));
 
@@ -74,7 +74,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
 // node찾아서 매개변수 node에 넣어주기
 // return: U_SUCC 또는 U_FAIL
 URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode *node, const char *name, int isDir) {
-    fprintf(stdout, "[uffs_TreeFindNodeByName] called");
+    fprintf(stdout, "[uffs_TreeFindNodeByName] called\n");
 
     char *token;
     const char delimiter[] = "/";
@@ -90,6 +90,9 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode *node, const char *name,
         token = strtok(NULL, delimiter);
     }
 
+    node = cur_node;
+
+    fprintf(stdout, "[uffs_TreeFindNodeByName] finished\n");
     return U_SUCC;
 }
 

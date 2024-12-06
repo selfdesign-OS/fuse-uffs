@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "uffs_types.h"
-#include "uffs_device.h"
 
 #define UFFS_TYPE_DIR		0
 #define UFFS_TYPE_FILE		1
@@ -81,6 +81,9 @@ struct uffs_TreeSt {
 	uint64_t data_entry[DATA_NODE_ENTRY_LEN];
 	u16 max_serial;
 };
+
+
+#include "uffs_device.h"
 
 URET uffs_TreeInit(uffs_Device *dev);
 
