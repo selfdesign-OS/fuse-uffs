@@ -210,7 +210,7 @@ struct fuse_operations uffs_oper = {
 	.init		= uffs_init,
 	.getattr	= uffs_getattr,
 	.readdir	= uffs_readdir,
-    .opendir    = uffs_opendir
+    .opendir    = uffs_opendir,
     .open       = uffs_open,
     .read       = uffs_read
 };
