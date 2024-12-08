@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include "uffs_types.h"
+#include "uffs_disk.h"
 
 #define UFFS_TYPE_DIR		0
 #define UFFS_TYPE_FILE		1
@@ -62,8 +63,8 @@ typedef struct uffs_TreeNodeSt {
 		struct FdataSt data;
 	} u;
 	uffs_FileInfo info;
-	u16 hash_next;
-	u16 hash_prev;
+	uint64_t hash_next;
+	uint64_t hash_prev;
 } TreeNode;
 
 #define DIR_NODE_HASH_MASK		0x1f
@@ -106,5 +107,8 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 #define ROOT_SERIAL 0
 URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name);
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
+URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
+URET initNode(TreeNode *node, data_Block *block, const char *path);
+URET uffs_TreeFindParentNodeOfFileNodeByName(uffs_Device *dev, TreeNode **node, const char *name);
 
 #endif

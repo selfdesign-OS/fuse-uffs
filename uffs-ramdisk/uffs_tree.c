@@ -97,7 +97,6 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
         if (tmp_node == NULL) {
             return U_FAIL;
         }
-        // cur_node에 담아 
         cur_node = tmp_node;
         
         token = strtok(NULL, delimiter);
@@ -118,6 +117,19 @@ TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial) {
+    int i;
+	TreeNode *node;
+	struct uffs_TreeSt *tree = &(dev->tree);
+	
+	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
+		node = tree->dir_entry[i];
+		while (node != EMPTY_NODE) {
+			if (node->u.dir.serial == serial) {
+				return node;
+			}
+			node = node->hash_next;
+		}
+	}
 
     return NULL;
 }
@@ -174,10 +186,6 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
     return NULL;
 }
 
-void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node) {
-    return NULL;
-}
-
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
 
@@ -198,7 +206,6 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
         if (tmp_node == NULL) {
             return U_FAIL;
         }
-        // cur_node에 담아 
         cur_node = tmp_node;
         
         token = strtok(NULL, delimiter);
@@ -245,5 +252,152 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
     *node = cur_node;
 
     fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] finished\n");
+    return U_SUCC;
+}
+
+static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
+						   int hash, TreeNode *node)
+{
+	node->hash_next = entry[hash];
+	node->hash_prev = EMPTY_NODE;
+    TreeNode* temp_node = (TreeNode*)node->hash_next;
+    temp_node->hash_prev = node;
+    entry[hash] = node;
+}
+
+static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.file_entry,
+					GET_FILE_HASH(node->u.file.serial),
+					node);
+}
+
+static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.dir_entry,
+					GET_DIR_HASH(node->u.dir.serial),
+					node);
+}
+
+static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.data_entry,
+					GET_DATA_HASH(node->u.data.parent, node->u.data.serial),
+					node);
+}
+
+void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
+{
+    switch (type) {
+    case UFFS_TYPE_DIR:
+        uffs_InsertToDirEntry(dev, node);
+        break;
+    case UFFS_TYPE_FILE:
+        uffs_InsertToFileEntry(dev, node);
+        break;
+    // case UFFS_TYPE_DATA:
+    //     uffs_InsertToDataEntry(dev, node);
+    //     break;
+    default:
+        fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
+        break;
+    }
+}
+
+URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name) {
+    fprintf(stdout, "[uffs_TreeFindParentNodeByName] called\n");
+    if(strcmp(name,"/") == 0){
+        return U_FAIL;
+    }
+    char *token;
+    const char delimiter[] = "/";
+
+    token = strtok(name, delimiter);
+    
+    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *tmp_node;
+    
+    while (token != NULL) {
+        printf("[uffs_TreeFindParentNodeByName] directory: %s\n", token);
+
+        // 디렉터리 노드 찾기
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        // 없으면 파일에서 찾기
+        if (tmp_node == NULL) {
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        }
+        if (tmp_node == NULL) {
+            return U_FAIL;
+        }
+        cur_node = tmp_node;
+        
+        token = strtok(NULL, delimiter);
+    }
+    TreeNode *parent_node = uffs_TreeFindDirNode(dev,cur_node->u.file.parent);
+    if (parent_node == NULL) {
+        return U_FAIL;
+    }
+    *node = parent_node;
+    fprintf(stdout, "[uffs_TreeFindParentNodeByName] finished\n");
+    return U_SUCC;
+}
+
+// 경로에서 파일 이름 추출 및 길이 반환
+int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
+    const char *lastSlash = strrchr(path, '/'); // 마지막 '/' 위치 찾기
+    if (lastSlash == NULL) {
+        // '/'가 없는 경우 전체 경로가 이름
+        strncpy(nameBuffer, path, maxNameLength - 1);
+        nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
+        return strlen(nameBuffer);
+    } else {
+        // '/' 이후 부분이 파일 이름
+        const char *name = lastSlash + 1;
+        strncpy(nameBuffer, name, maxNameLength - 1);
+        nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
+        return strlen(nameBuffer);
+    }
+}
+
+URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *path, u8 type) {
+    URET result;
+    TreeNode *parent_node;
+
+    // 부모 노드 찾기
+    result = uffs_TreeFindParentNodeByName(dev, &parent_node, path);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[initNode] no parent \n");
+        return U_FAIL;
+    }
+    // 블록 부모 초기화
+    block->tag.parent = parent_node->u.dir.serial;
+
+    // 랜덤 시리얼 번호 생성 (16비트)
+    srand(time(NULL)); // 시드 초기화
+    uint16_t random_serial = (uint16_t)(rand() & 0xFFFF); // 16비트 값 생성
+
+    // 노드 초기화
+    node->u.dir.block = block->tag.block_id;        // 블록 ID
+    node->u.dir.parent = parent_node->u.dir.serial; // 부모 노드 시리얼
+    node->u.dir.serial = random_serial;            // 고유 시리얼 번호
+    
+    // 정보 초기화
+    node->info.create_time = GET_CURRENT_TIME();
+    node->info.last_modify = GET_CURRENT_TIME();
+    node->info.access = GET_CURRENT_TIME();
+    node->info.reserved = 0;
+
+    // 경로 파싱하여 이름 및 길이 설정
+    node->info.name_len = parsePath(path, node->info.name, MAX_FILENAME_LENGTH);
+    if(type == UFFS_TYPE_DIR) {
+        node->info.nlink = 2;    // 디렉토리 기본 링크 수
+        node->info.len = 0;      // 디렉토리이므로 길이는 0
+    } else{
+        node->info.nlink = 1;    // 디렉토리 기본 링크 수
+        node->info.len = block->tag.data_len;      // 디렉토리이므로 길이는 0
+    }
+    node->info.mode = 0755;
+
     return U_SUCC;
 }

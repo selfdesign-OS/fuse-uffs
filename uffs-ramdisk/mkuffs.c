@@ -192,7 +192,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] error\n");
-        return -ENOENT;	
+        return -E;	
 	}
 
     if (size > node->info.len) {
@@ -206,13 +206,53 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     return size;
 }
 
+int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
+		      struct fuse_file_info *fi)
+{   
+    fprintf(stdout, "[uffs_write] called\n");
+    URET result;
+    // 쓰기 범위 확인
+    if (size > BLOCK_DATA_SIZE) {
+        fprintf(stderr, "[uffs_write] file size too big\n");
+        return -EFBIG; // 파일 크기 초과 오류
+    }
+    data_Block* freeBlock;
+    result = getFreeBlock(&disk,&freeBlock);
+    if(result == U_FAIL) {
+        fprintf(stderr, "[uffs_write] free block error\n");
+        return -ENOSPC;
+    }
+    URET initBlockResult = initBlock(freeBlock,UFFS_TYPE_FILE,size);
+    if(initBlockResult == U_FAIL){
+        fprintf(stderr, "[uffs_write] init block error\n");
+        return -EINVAL;
+    }
+	memcpy(freeBlock->data, buf, size);
+
+    TreeNode *node;
+    node = (TreeNode *) malloc(sizeof(TreeNode));
+    memset(node,0,sizeof(TreeNode));
+    URET initNodeResult = initNode(node, freeBlock ,path);
+    if(initNodeResult == U_FAIL){
+        fprintf(stderr, "[uffs_write] init Node error\n");
+        return -EINVAL;
+    }
+    freeBlock->status = usedblock;
+    uffs_InsertNodeToTree(&dev,UFFS_TYPE_FILE,node);
+
+    return size;
+}
+
+
+
 struct fuse_operations uffs_oper = {
 	.init		= uffs_init,
 	.getattr	= uffs_getattr,
 	.readdir	= uffs_readdir,
     .opendir    = uffs_opendir,
     .open       = uffs_open,
-    .read       = uffs_read
+    .read       = uffs_read,
+    .write      = uffs_write
 };
 
 int main(int argc, char *argv[])
