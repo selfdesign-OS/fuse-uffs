@@ -209,3 +209,41 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] finished\n");
     return U_SUCC;
 }
+
+URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
+    fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] called\n");
+
+    char *token;
+    const char delimiter[] = "/";
+
+    token = strtok(name, delimiter);
+    
+    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *tmp_node;
+    int isFile = 0;
+    while (token != NULL) {
+        printf("[uffs_TreeFindFileNodeByNameWithoutParent] directory: %s\n", token);
+
+        // 디렉터리 노드 찾기
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        // 없으면 파일에서 찾기
+        if (tmp_node == NULL) {
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+            isFile = 1;
+        }
+        if (tmp_node == NULL) {
+            return U_FAIL;
+        }
+        cur_node = tmp_node;
+        token = strtok(NULL, delimiter);
+    }
+    if (isFile != 1) {
+        return U_FAIL;
+    }
+
+    *node = cur_node;
+
+    fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] finished\n");
+    return U_SUCC;
+}

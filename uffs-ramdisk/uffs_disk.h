@@ -23,8 +23,8 @@ struct data_BlockSt {
     struct data_TagSt tag;
 };
 
-struct data_DiskSt {
+typedef struct data_DiskSt {
     struct data_BlockSt blocks[BLOCK_COUNT];
-};
+} data_Disk;
 
 #endif

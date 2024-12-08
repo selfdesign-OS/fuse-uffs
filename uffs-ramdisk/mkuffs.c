@@ -20,8 +20,10 @@
 
 #include "uffs_tree.h"
 #include "uffs_types.h"
+#include "uffs_disk.h"
 
 uffs_Device dev = {0};
+data_Disk disk = {0};
 
 int uffs_init()
 {
@@ -161,8 +163,47 @@ int uffs_opendir(const char *path, struct fuse_file_info *fu)
         fprintf(stdout, "[uffs_opendir] finished\n");
         return 0;
     }
-    fprintf(stdout, "[uffs_opendir] finished\n");
+    fprintf(stderr, "[uffs_opendir] error\n");
 	return -ENOENT;
+}
+
+int uffs_open(const char *path, struct fuse_file_info *fi)
+{
+    fprintf(stdout, "[uffs_open] called\n");
+    TreeNode* node;
+    int result;
+    result = uffs_TreeFindNodeByName(&dev, &node, path);
+
+	if (result == U_SUCC){
+        fprintf(stdout, "[uffs_open] finished\n");
+		return 0;	
+	}
+    fprintf(stderr, "[uffs_open] error\n");
+	return -ENOENT;
+}
+
+int uffs_read(const char *path, char *buf, size_t size, off_t offset,
+		      struct fuse_file_info *fi)
+{
+    fprintf(stdout, "[uffs_read] called\n");
+    TreeNode* node;
+    int result;
+	result = uffs_TreeFindFileNodeByNameWithoutParent(&dev, &node, path);
+
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_read] error\n");
+        return -ENOENT;	
+	}
+
+    if (size > node->info.len) {
+        size = node->info.len;
+    }
+	if ( offset > 0 ) {
+		memcpy(buf, disk.blocks[node->u.file.block].data, size);
+	}
+
+    fprintf(stdout, "[uffs_read] finished\n");
+    return size;
 }
 
 struct fuse_operations uffs_oper = {
@@ -170,6 +211,8 @@ struct fuse_operations uffs_oper = {
 	.getattr	= uffs_getattr,
 	.readdir	= uffs_readdir,
     .opendir    = uffs_opendir
+    .open       = uffs_open,
+    .read       = uffs_read
 };
 
 int main(int argc, char *argv[])
