@@ -118,6 +118,7 @@ TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial) {
+
     return NULL;
 }
 
@@ -175,4 +176,36 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node) {
     return NULL;
+}
+
+URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
+    fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
+
+    char *token;
+    const char delimiter[] = "/";
+
+    token = strtok(name, delimiter);
+    
+    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *tmp_node;
+
+    while (token != NULL) {
+        printf("[uffs_TreeFindDirNodeByNameWithoutParent] directory: %s\n", token);
+
+        // 디렉터리 노드 찾기
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        if (tmp_node == NULL) {
+            return U_FAIL;
+        }
+        // cur_node에 담아 
+        cur_node = tmp_node;
+        
+        token = strtok(NULL, delimiter);
+    }
+
+    *node = cur_node;
+
+    fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] finished\n");
+    return U_SUCC;
 }
