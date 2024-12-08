@@ -192,7 +192,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] error\n");
-        return -E;	
+        return -ENOENT;	
 	}
 
     if (size > node->info.len) {
