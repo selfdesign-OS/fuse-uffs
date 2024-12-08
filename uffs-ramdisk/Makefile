@@ -5,7 +5,7 @@ LDFLAGS = `pkg-config fuse --libs`
 
 # 파일 이름 설정
 TARGET = mkuffs
-SRCS = mkuffs.c uffs_tree.c disk.c
+SRCS = mkuffs.c uffs_tree.c uffs_disk.c
 HEADERS = uffs_device.h uffs_disk.h uffs_tree.h uffs_types.h
 
 # 오브젝트 파일 생성
