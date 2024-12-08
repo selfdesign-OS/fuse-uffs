@@ -143,7 +143,7 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     return 0;
 }
 
-int hello_opendir(const char *path, struct fuse_file_info *fu)
+int uffs_opendir(const char *path, struct fuse_file_info *fu)
 {
     TreeNode* node;
 	int result;
