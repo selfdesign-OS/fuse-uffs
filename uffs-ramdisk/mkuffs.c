@@ -145,18 +145,21 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 int uffs_opendir(const char *path, struct fuse_file_info *fu)
 {
+    fprintf(stdout, "[uffs_opendir] called\n");
     TreeNode* node;
 	int result;
 	if (strcmp("/", path) == 0) {
+        fprintf(stdout, "[uffs_opendir] finished\n");
 		return 0;
 	}
 
 	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path);
 
 	if (result == U_SUCC) {
+        fprintf(stdout, "[uffs_opendir] finished\n");
         return 0;
     }
-
+    fprintf(stdout, "[uffs_opendir] finished\n");
 	return -ENOENT;
 }
 
