@@ -232,7 +232,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
     TreeNode *node;
     node = (TreeNode *) malloc(sizeof(TreeNode));
     memset(node,0,sizeof(TreeNode));
-    URET initNodeResult = initNode(node, freeBlock ,path);
+    URET initNodeResult = initNode(node, freeBlock ,path,UFFS_TYPE_FILE);
     if(initNodeResult == U_FAIL){
         fprintf(stderr, "[uffs_write] init Node error\n");
         return -EINVAL;
