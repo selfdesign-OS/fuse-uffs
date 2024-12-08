@@ -48,8 +48,10 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 		result = uffs_TreeFindNodeByName(&dev, &node, path);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, &node, path) != U_SUCC)
+		if (result = uffs_TreeFindNodeByName(&dev, &node, path) != U_SUCC) {
 			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
+            return -ENOENT;
+        }
 	}
 
 	stbuf->st_mode = S_IFDIR | node->info.mode;
