@@ -155,13 +155,14 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 				//read file name from flash, and compare...
 				if (strcmp(node->info.name, name) == 0 && node->info.name_len == len) {
 					//Got it!
+                    fprintf(stdout,"[uffs_TreeFindFileNodeByName] finished: find file node by name.\n");
 					return node;
 				}
 			}
 			node = node->hash_next;
 		}
 	}
-    fprintf(stdout,"[uffs_TreeFindFileNodeByName] finished\n");
+    fprintf(stdout,"[uffs_TreeFindFileNodeByName] finished: can't find file node by name.\n");
     return NULL;
 }
 
@@ -377,15 +378,16 @@ int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
         // '/'가 없는 경우 전체 경로가 이름
         strncpy(nameBuffer, path, maxNameLength - 1);
         nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
+        fprintf(stdout,"[parsePath] finished 1\n");
         return strlen(nameBuffer);
     } else {
         // '/' 이후 부분이 파일 이름
         const char *name = lastSlash + 1;
         strncpy(nameBuffer, name, maxNameLength - 1);
         nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
+        fprintf(stdout,"[parsePath] finished 2\n");
         return strlen(nameBuffer);
     }
-    fprintf(stdout,"[parsePath] finished\n");
 }
 
 URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *path, u8 type) {
