@@ -48,17 +48,19 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 
 	if (strcmp(path, "/") == 0) {
 		result = uffs_TreeFindNodeByName(&dev, &node, path);
+        stbuf->st_mode = S_IFDIR | node->info.mode;
+        stbuf->st_nlink = node->info.nlink;	
+        stbuf->st_size = node->info.len;
 	}
 	else {
 		if (result = uffs_TreeFindNodeByName(&dev, &node, path) != U_SUCC) {
 			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
             return -ENOENT;
         }
+        stbuf->st_mode = S_IFREG | 0755;
+	    stbuf->st_nlink = 1;	
+	    stbuf->st_size = node->info.len;
 	}
-
-	stbuf->st_mode = S_IFDIR | node->info.mode;
-	stbuf->st_nlink = node->info.nlink;	
-	stbuf->st_size = node->info.len;
 	
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;
@@ -198,10 +200,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     if (size > node->info.len) {
         size = node->info.len;
     }
-	if ( offset > 0 ) {
-		memcpy(buf, disk.blocks[node->u.file.block].data, size);
-	}
-
+	memcpy(buf, disk.blocks[node->u.file.block].data, size);
     fprintf(stdout, "[uffs_read] finished\n");
     return size;
 }
@@ -230,8 +229,10 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
         return -ENOSPC;
     }
 	memcpy(block->data, buf, size);
+    node->info.len = size;
+    block->tag.data_len = node->info.len;
 
-    fprintf(stdout, "[uffs_write] finished\n");
+
     return size;
 }
 
@@ -265,7 +266,6 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     freeBlock->status = usedblock;
     uffs_InsertNodeToTree(&dev, UFFS_TYPE_FILE, node);
 
-    fprintf(stdout, "[uffs_create] finished\n");
     return 0;
 }
 
