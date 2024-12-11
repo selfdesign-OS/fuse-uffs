@@ -28,6 +28,7 @@ URET uffs_TreeInit(uffs_Device *dev)
 
 	dev->tree.max_serial = ROOT_DIR_SERIAL;
 	
+    fprintf(stdout,"[uffs_TreeInit] finished\n");
 	return U_SUCC;
 }
 
@@ -68,6 +69,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
     dev->tree.dir_entry[hash] = root;           // 해시 테이블에 루트 노드 등록
 
     // 성공적으로 초기화된 경우
+    fprintf(stderr,"[uffs_BuildTree] finished\n");
     return U_SUCC;
 }
 
@@ -95,6 +97,7 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
             tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         }
         if (tmp_node == NULL) {
+            fprintf(stderr,"[uffs_TreeFindNodeByName] error 1\n");
             return U_FAIL;
         }
         cur_node = tmp_node;
@@ -117,6 +120,7 @@ TreeNode * uffs_TreeFindFileNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial) {
+    fprintf(stdout,"[uffs_TreeFindDirNode] called\n");
     int i;
 	TreeNode *node;
 	struct uffs_TreeSt *tree = &(dev->tree);
@@ -130,7 +134,7 @@ TreeNode * uffs_TreeFindDirNode(uffs_Device *dev, u16 serial) {
 			node = node->hash_next;
 		}
 	}
-
+    fprintf(stdout,"[uffs_TreeFindDirNode] finished\n");
     return NULL;
 }
 
@@ -139,6 +143,7 @@ TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
+    fprintf(stdout,"[uffs_TreeFindFileNodeByName] called\n");
     int i;
 	TreeNode *node;
 	struct uffs_TreeSt *tree = &(dev->tree);
@@ -156,11 +161,12 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 			node = node->hash_next;
 		}
 	}
-
+    fprintf(stdout,"[uffs_TreeFindFileNodeByName] finished\n");
     return NULL;
 }
 
 TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
+    fprintf(stdout,"[uffs_TreeFindDirNodeByName] called\n");
     int i;
 	TreeNode *node;
 	struct uffs_TreeSt *tree = &(dev->tree);
@@ -178,7 +184,7 @@ TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 le
 			node = node->hash_next;
 		}
 	}
-
+    fprintf(stdout,"[uffs_TreeFindDirNodeByName] finished\n");
     return NULL;
 }   
 
@@ -204,6 +210,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
         // 디렉터리 노드 찾기
         tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         if (tmp_node == NULL) {
+            fprintf(stderr,"[uffs_TreeFindDirNodeByNameWithoutParent] error 1\n");
             return U_FAIL;
         }
         cur_node = tmp_node;
@@ -240,12 +247,14 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
             isFile = 1;
         }
         if (tmp_node == NULL) {
+            fprintf(stderr,"[uffs_TreeFindFileNodeByNameWithoutParent] error 1\n");
             return U_FAIL;
         }
         cur_node = tmp_node;
         token = strtok(NULL, delimiter);
     }
     if (isFile != 1) {
+        fprintf(stderr,"[uffs_TreeFindFileNodeByNameWithoutParent] error 2\n");
         return U_FAIL;
     }
 
@@ -258,11 +267,13 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
 static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
 						   int hash, TreeNode *node)
 {
+    fprintf(stdout,"[_InsertToEntry] called\n");
 	node->hash_next = entry[hash];
 	node->hash_prev = EMPTY_NODE;
     TreeNode* temp_node = (TreeNode*)node->hash_next;
     temp_node->hash_prev = node;
     entry[hash] = node;
+    fprintf(stdout,"[_InsertToEntry] finished\n");
 }
 
 static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node)
@@ -288,6 +299,7 @@ static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node)
 
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
 {
+    fprintf(stdout,"[uffs_InsertNodeToTree] called\n");
     switch (type) {
     case UFFS_TYPE_DIR:
         uffs_InsertToDirEntry(dev, node);
@@ -302,6 +314,7 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
         fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
         break;
     }
+    fprintf(stdout,"[uffs_InsertNodeToTree] finished\n");
 }
 
 URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist) {
@@ -333,7 +346,7 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
                 cur_node = tmp_node;
                 break;
             }else{
-                fprintf(stderr,"[uffs_TreeFindParentNodeByName] error\n");
+                fprintf(stderr,"[uffs_TreeFindParentNodeByName] error 1\n");
                 return U_FAIL;
             }
         }
@@ -341,7 +354,7 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
     }
     TreeNode *parent_node = uffs_TreeFindDirNode(dev,cur_node->u.file.parent);
     if (parent_node == NULL) {
-        fprintf(stderr,"[uffs_TreeFindParentNodeByName] parent node null\n");
+        fprintf(stderr,"[uffs_TreeFindParentNodeByName] error 2\n");
         return U_FAIL;
     }
     *node = parent_node;
@@ -351,6 +364,7 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
 
 // 경로에서 파일 이름 추출 및 길이 반환
 int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
+    fprintf(stdout,"[parsePath] called\n");
     const char *lastSlash = strrchr(path, '/'); // 마지막 '/' 위치 찾기
     if (lastSlash == NULL) {
         // '/'가 없는 경우 전체 경로가 이름
@@ -364,9 +378,11 @@ int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
         nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
         return strlen(nameBuffer);
     }
+    fprintf(stdout,"[parsePath] finished\n");
 }
 
 URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *path, u8 type) {
+    fprintf(stdout,"[initNode] called\n");
     URET result;
     TreeNode *parent_node;
 
@@ -410,6 +426,6 @@ URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *p
         node->info.len = block->tag.data_len;      // 디렉토리이므로 길이는 0
     }
     node->info.mode = 0755;
-
+    fprintf(stdout,"[initNode] finished\n");
     return U_SUCC;
 }

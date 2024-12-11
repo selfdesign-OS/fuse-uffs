@@ -3,6 +3,7 @@
 
 #include "uffs_types.h"
 #include <time.h>
+#include <stdio.h>
 
 #define BLOCK_COUNT 512               //!< 블록 개수
 #define BLOCK_DATA_SIZE 512

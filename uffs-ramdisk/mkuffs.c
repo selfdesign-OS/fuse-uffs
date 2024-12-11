@@ -231,8 +231,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
     }
 	memcpy(block->data, buf, size);
 
-
-
+    fprintf(stdout, "[uffs_write] finished\n");
     return size;
 }
 
@@ -266,6 +265,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     freeBlock->status = usedblock;
     uffs_InsertNodeToTree(&dev, UFFS_TYPE_FILE, node);
 
+    fprintf(stdout, "[uffs_create] finished\n");
     return 0;
 }
 
