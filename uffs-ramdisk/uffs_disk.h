@@ -31,4 +31,5 @@ typedef struct data_DiskSt {
 URET getFreeBlock(data_Disk* disk, data_Block** freeBlock);
 URET initBlock(data_Block* block, u8 type, u16 data_len);
 URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id);
+void uffs_InitBlock(data_Disk *disk);
 #endif

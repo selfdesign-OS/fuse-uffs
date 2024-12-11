@@ -31,7 +31,7 @@ int uffs_init()
 
 	uffs_TreeInit(&dev);
 	uffs_BuildTree(&dev);
-	
+	uffs_InitBlock(&disk);
 	fprintf(stdout, "[uffs_init] finished\n");
 	return 0;
 }

@@ -32,4 +32,10 @@ URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id){
     
 }
 
+void uffs_InitBlock(data_Disk *disk){
+    for(int i=0;i<BLOCK_DATA_SIZE;i++){
+        disk->blocks[i].status = unusedblock;
+    }
+}
+
 
