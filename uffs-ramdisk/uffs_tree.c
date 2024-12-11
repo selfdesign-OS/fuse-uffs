@@ -304,7 +304,7 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
     }
 }
 
-URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name) {
+URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist) {
     fprintf(stdout, "[uffs_TreeFindParentNodeByName] called\n");
     if(strcmp(name,"/") == 0){
         return U_FAIL;
@@ -327,15 +327,21 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
         if (tmp_node == NULL) {
             tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         }
+        token = strtok(NULL, delimiter);
         if (tmp_node == NULL) {
-            return U_FAIL;
+            if(!isNodeExist && token == NULL){
+                cur_node = tmp_node;
+                break;
+            }else{
+                fprintf(stderr,"[uffs_TreeFindParentNodeByName] error\n");
+                return U_FAIL;
+            }
         }
         cur_node = tmp_node;
-        
-        token = strtok(NULL, delimiter);
     }
     TreeNode *parent_node = uffs_TreeFindDirNode(dev,cur_node->u.file.parent);
     if (parent_node == NULL) {
+        fprintf(stderr,"[uffs_TreeFindParentNodeByName] parent node null\n");
         return U_FAIL;
     }
     *node = parent_node;

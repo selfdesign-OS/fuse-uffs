@@ -250,7 +250,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     // 블록 초기화
     URET initBlockResult = initBlock(freeBlock, UFFS_TYPE_FILE, 0);
     if (initBlockResult == U_FAIL) {
-        fprintf(stderr, "[uffs_create] get freeblock error\n");
+        fprintf(stderr, "[uffs_create] initBlock error\n");
         return -EINVAL;
     }
 
