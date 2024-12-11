@@ -371,7 +371,7 @@ URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *p
     TreeNode *parent_node;
 
     // 부모 노드 찾기
-    result = uffs_TreeFindParentNodeByName(dev, &parent_node, path);
+    result = uffs_TreeFindParentNodeByName(dev, &parent_node, path, 0);
     if (result == U_FAIL) {
         fprintf(stderr, "[initNode] no parent \n");
         return U_FAIL;

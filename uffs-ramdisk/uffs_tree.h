@@ -109,6 +109,6 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET initNode(uffs_Device *dev,TreeNode *node, data_Block *block, const char *path, u8 type);
-URET uffs_TreeFindParentNodeOfFileNodeByName(uffs_Device *dev, TreeNode **node, const char *name);
+URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist);
 
 #endif
