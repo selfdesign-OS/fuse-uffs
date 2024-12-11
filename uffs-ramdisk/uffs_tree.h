@@ -105,7 +105,7 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 #define UDIR 0
 #define DIR 1
 #define ROOT_SERIAL 0
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name);
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int *isDir);
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET initNode(uffs_Device *dev,TreeNode *node, data_Block *block, const char *path, u8 type);

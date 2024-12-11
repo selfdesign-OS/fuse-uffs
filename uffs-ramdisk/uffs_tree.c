@@ -58,7 +58,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
     snprintf(root->info.name, MAX_FILENAME_LENGTH, "/"); // 루트 이름 설정
     root->info.nlink = 2;    // 디렉토리의 기본 링크 수는 2 ("."과 "..")
     root->info.len = 0;      // 디렉토리이므로 길이는 0
-    root->info.mode = 0755;
+    root->info.mode = 0666;
 
     // TreeNode 연결 초기화
     root->hash_prev = EMPTY_NODE;
@@ -75,7 +75,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
 // node찾아서 매개변수 node에 넣어주기
 // return: U_SUCC 또는 U_FAIL
-URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name) {
+URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int *isDir) {
     fprintf(stdout, "[uffs_TreeFindNodeByName] called\n");
 
     char *token;
@@ -92,8 +92,12 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 
         // 디렉터리 노드 찾기
         tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        if (isDir != NULL) 
+            *isDir = 1;
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
+            if (isDir != NULL) 
+                *isDir = 0;
             tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         }
         if (tmp_node == NULL) {
@@ -107,7 +111,7 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 
     *node = cur_node;
 
-    fprintf(stdout, "[uffs_TreeFindNodeByName] finished\n");
+    fprintf(stdout, "[uffs_TreeFindNodeByName] finished - isDir: %d\n", isDir);
     return U_SUCC;
 }
 
@@ -434,7 +438,7 @@ URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *p
         node->info.nlink = 1;    // 디렉토리 기본 링크 수
         node->info.len = block->tag.data_len;      // 디렉토리이므로 길이는 0
     }
-    node->info.mode = 0755;
+    node->info.mode = 0666;
     fprintf(stdout,"[initNode] finished\n");
     return U_SUCC;
 }

@@ -43,24 +43,23 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 
 	TreeNode *node;
 	URET result;
+    int isDir = 1;
 	
 	memset(stbuf, 0, sizeof(struct stat));
 
 	if (strcmp(path, "/") == 0) {
-		result = uffs_TreeFindNodeByName(&dev, &node, path);
-        stbuf->st_mode = S_IFDIR | node->info.mode;
-        stbuf->st_nlink = node->info.nlink;	
-        stbuf->st_size = node->info.len;
+		result = uffs_TreeFindNodeByName(&dev, &node, path, &isDir);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, &node, path) != U_SUCC) {
+		if (result = uffs_TreeFindNodeByName(&dev, &node, path, &isDir) != U_SUCC) {
 			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
             return -ENOENT;
         }
-        stbuf->st_mode = S_IFREG | 0755;
-	    stbuf->st_nlink = 1;	
-	    stbuf->st_size = node->info.len;
 	}
+    
+    stbuf->st_mode = (isDir ? S_IFDIR : S_IFREG) | node->info.mode;
+    stbuf->st_nlink = node->info.nlink;
+    stbuf->st_size = node->info.len;
 	
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;
@@ -85,7 +84,7 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     // 해당 path에 대응하는 node 찾기
-    result = uffs_TreeFindNodeByName(&dev, &node, path_copy);
+    result = uffs_TreeFindNodeByName(&dev, &node, path_copy, NULL);
     free(path_copy); // TreeFindNodeByName 호출 후 복사본은 더 이상 필요 없음
     path_copy = NULL;
 
@@ -174,7 +173,7 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
     fprintf(stdout, "[uffs_open] called\n");
     TreeNode* node;
     int result;
-    result = uffs_TreeFindNodeByName(&dev, &node, path);
+    result = uffs_TreeFindNodeByName(&dev, &node, path, NULL);
 
 	if (result == U_SUCC){
         fprintf(stdout, "[uffs_open] finished\n");
