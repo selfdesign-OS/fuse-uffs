@@ -376,11 +376,17 @@ URET initNode(uffs_Device *dev, TreeNode *node, data_Block *block, const char *p
     // 랜덤 시리얼 번호 생성 (16비트)
     srand(time(NULL)); // 시드 초기화
     uint16_t random_serial = (uint16_t)(rand() & 0xFFFF); // 16비트 값 생성
-
     // 노드 초기화
-    node->u.dir.block = block->tag.block_id;        // 블록 ID
-    node->u.dir.parent = parent_node->u.dir.serial; // 부모 노드 시리얼
-    node->u.dir.serial = random_serial;            // 고유 시리얼 번호
+    if (type==UFFS_TYPE_DIR) {
+        node->u.dir.block = block->tag.block_id;        // 블록 ID
+        node->u.dir.parent = parent_node->u.dir.serial; // 부모 노드 시리얼
+        node->u.dir.serial = random_serial;            // 고유 시리얼 번호
+    } else{
+        node->u.file.block = block->tag.block_id;        // 블록 ID
+        node->u.file.parent = parent_node->u.dir.serial; // 부모 노드 시리얼
+        node->u.file.serial = random_serial;            // 고유 시리얼 번호
+    }
+
     
     // 정보 초기화
     node->info.create_time = GET_CURRENT_TIME();

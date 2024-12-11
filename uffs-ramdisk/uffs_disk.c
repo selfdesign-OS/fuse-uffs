@@ -21,6 +21,15 @@ URET initBlock(data_Block* block, u8 type, u16 data_len) {
     block->tag.page_offset = 0;
 }
 
-
+URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id){
+    for(int i =0;i<BLOCK_COUNT;i++){
+        if(disk->blocks[i].tag.block_id==block_id && disk->blocks[i].status==usedblock){
+            *block=&disk->blocks[i];
+            return U_SUCC;
+        }
+    }
+    return U_FAIL;
+    
+}
 
 
