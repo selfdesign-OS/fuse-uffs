@@ -268,6 +268,59 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     return 0;
 }
 
+int uffs_mkdir(const char *path, mode_t mode) {
+    fprintf(stdout, "[uffs_mkdir] called, path: %s\n", path);
+
+    // 부모 디렉토리 노드 확인
+    TreeNode *parent_node = NULL;
+    URET result = uffs_TreeFindParentNodeByName(&dev, &parent_node, path, 0);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_mkdir] parent node not found\n");
+        return -ENOENT;
+    }
+
+    // 새로운 블록 할당
+    data_Block *freeBlock;
+    result = getFreeBlock(&disk, &freeBlock);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_mkdir] no free block available\n");
+        return -ENOSPC;
+    }
+
+    // 블록 초기화
+    result = initBlock(freeBlock, UFFS_TYPE_DIR, 0);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_mkdir] block initialization failed\n");
+        return -EIO;
+    }
+
+    // 새로운 노드 생성 및 초기화
+    TreeNode *new_node = (TreeNode *)malloc(sizeof(TreeNode));
+    if (new_node == NULL) {
+        fprintf(stderr, "[uffs_mkdir] memory allocation failed\n");
+        return -ENOMEM;
+    }
+    memset(new_node, 0, sizeof(TreeNode));
+
+    result = initNode(&dev, new_node, freeBlock, path, UFFS_TYPE_DIR);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_mkdir] node initialization failed\n");
+        free(new_node);
+        return -EIO;
+    }
+
+    // 새 디렉토리를 트리에 추가
+    uffs_InsertNodeToTree(&dev, UFFS_TYPE_DIR, new_node);
+
+    // 디렉토리 링크 수 업데이트
+    parent_node->info.nlink++;
+    parent_node->info.last_modify = (u32)time(NULL);
+
+
+    fprintf(stdout, "[uffs_mkdir] finished\n");
+    return 0;
+}
+
 struct fuse_operations uffs_oper = {
 	.init		= uffs_init,
 	.getattr	= uffs_getattr,
@@ -276,7 +329,8 @@ struct fuse_operations uffs_oper = {
     .open       = uffs_open,
     .read       = uffs_read,
     .write      = uffs_write,
-    .create     = uffs_create
+    .create     = uffs_create,
+    .mkdir      = uffs_mkdir
 };
 
 int main(int argc, char *argv[])
