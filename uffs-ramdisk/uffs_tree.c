@@ -73,6 +73,21 @@ URET uffs_BuildTree(uffs_Device *dev) {
     return U_SUCC;
 }
 
+URET static getRootDir(uffs_Device *dev, TreeNode **cur_node) {
+    fprintf(stdout, "[getRootDir] called\n");
+    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    *cur_node = dev->tree.dir_entry[hash];
+    while ((*cur_node)->u.dir.serial != ROOT_SERIAL) {
+        if ((*cur_node)->hash_next == EMPTY_NODE) {
+            fprintf(stderr, "[getRootDir] fail - can't find root node\n");
+            return U_FAIL;
+        }
+        *cur_node = (*cur_node)->hash_next;
+    }
+    fprintf(stdout, "[getRootDir] finished - found root node\n");
+    return U_SUCC;
+}
+
 // node찾아서 매개변수 node에 넣어주기
 // return: U_SUCC 또는 U_FAIL
 URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int *isDir) {
@@ -88,9 +103,13 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 
     token = strtok(temp_name, delimiter);
     
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
-    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *cur_node;
     TreeNode *tmp_node;
+    int getRootResult;
+    getRootResult = getRootDir(dev, &cur_node);
+    if (getRootResult == U_FAIL) {
+        return U_FAIL;
+    }
 
     while (token != NULL) {
         printf("[uffs_TreeFindNodeByName] directory: %s\n", token);
@@ -215,9 +234,13 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
 
     token = strtok(temp_name, delimiter);
     
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
-    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *cur_node;
     TreeNode *tmp_node;
+    int getRootResult;
+    getRootResult = getRootDir(dev, &cur_node);
+    if (getRootResult == U_FAIL) {
+        return U_FAIL;
+    }
 
     while (token != NULL) {
         printf("[uffs_TreeFindDirNodeByNameWithoutParent] directory: %s\n", token);
@@ -252,9 +275,13 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
 
     token = strtok(temp_name, delimiter);
     
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
-    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *cur_node;
     TreeNode *tmp_node;
+    int getRootResult;
+    getRootResult = getRootDir(dev, &cur_node);
+    if (getRootResult == U_FAIL) {
+        return U_FAIL;
+    }
     int isFile = 0;
     while (token != NULL) {
         printf("[uffs_TreeFindFileNodeByNameWithoutParent] directory: %s\n", token);
@@ -354,9 +381,13 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
 
     token = strtok(temp_name, delimiter);
     
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
-    TreeNode *cur_node = dev->tree.dir_entry[hash];
+    TreeNode *cur_node;
     TreeNode *tmp_node;
+    int getRootResult;
+    getRootResult = getRootDir(dev, &cur_node);
+    if (getRootResult == U_FAIL) {
+        return U_FAIL;
+    }
     
     while (token != NULL) {
         printf("[uffs_TreeFindParentNodeByName] directory: %s\n", token);
