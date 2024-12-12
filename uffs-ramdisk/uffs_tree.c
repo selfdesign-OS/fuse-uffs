@@ -80,8 +80,13 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 
     char *token;
     const char delimiter[] = "/";
+    // copy name
+    int name_len = strlen(name) > MAX_FILENAME_LENGTH ? MAX_FILENAME_LENGTH : strlen(name);
+    char temp_name[MAX_FILENAME_LENGTH + 1];
+    strncpy(temp_name, name, name_len);
+    temp_name[name_len] = '\0';
 
-    token = strtok(name, delimiter);
+    token = strtok(temp_name, delimiter);
     
     int hash = GET_DIR_HASH(ROOT_SERIAL);
     TreeNode *cur_node = dev->tree.dir_entry[hash];
@@ -202,8 +207,13 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
 
     char *token;
     const char delimiter[] = "/";
+    // copy name
+    int name_len = strlen(name) > MAX_FILENAME_LENGTH ? MAX_FILENAME_LENGTH : strlen(name);
+    char temp_name[MAX_FILENAME_LENGTH + 1];
+    strncpy(temp_name, name, name_len);
+    temp_name[name_len] = '\0';
 
-    token = strtok(name, delimiter);
+    token = strtok(temp_name, delimiter);
     
     int hash = GET_DIR_HASH(ROOT_SERIAL);
     TreeNode *cur_node = dev->tree.dir_entry[hash];
@@ -234,8 +244,13 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
 
     char *token;
     const char delimiter[] = "/";
+    // copy name
+    int name_len = strlen(name) > MAX_FILENAME_LENGTH ? MAX_FILENAME_LENGTH : strlen(name);
+    char temp_name[MAX_FILENAME_LENGTH + 1];
+    strncpy(temp_name, name, name_len);
+    temp_name[name_len] = '\0';
 
-    token = strtok(name, delimiter);
+    token = strtok(temp_name, delimiter);
     
     int hash = GET_DIR_HASH(ROOT_SERIAL);
     TreeNode *cur_node = dev->tree.dir_entry[hash];
@@ -331,8 +346,13 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
     }
     char *token;
     const char delimiter[] = "/";
+    // copy name
+    int name_len = strlen(name) > MAX_FILENAME_LENGTH ? MAX_FILENAME_LENGTH : strlen(name);
+    char temp_name[MAX_FILENAME_LENGTH + 1];
+    strncpy(temp_name, name, name_len);
+    temp_name[name_len] = '\0';
 
-    token = strtok(name, delimiter);
+    token = strtok(temp_name, delimiter);
     
     int hash = GET_DIR_HASH(ROOT_SERIAL);
     TreeNode *cur_node = dev->tree.dir_entry[hash];
@@ -382,14 +402,14 @@ int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
         // '/'가 없는 경우 전체 경로가 이름
         strncpy(nameBuffer, path, maxNameLength - 1);
         nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
-        fprintf(stdout,"[parsePath] finished 1\n");
+        fprintf(stdout,"[parsePath] finished 1 - name: %s\n", nameBuffer);
         return strlen(nameBuffer);
     } else {
         // '/' 이후 부분이 파일 이름
         const char *name = lastSlash + 1;
         strncpy(nameBuffer, name, maxNameLength - 1);
         nameBuffer[maxNameLength - 1] = '\0'; // Null-terminate
-        fprintf(stdout,"[parsePath] finished 2\n");
+        fprintf(stdout,"[parsePath] finished 2 - name: %s\n", nameBuffer);
         return strlen(nameBuffer);
     }
 }

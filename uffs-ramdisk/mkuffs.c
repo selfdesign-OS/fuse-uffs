@@ -309,6 +309,7 @@ int uffs_mkdir(const char *path, mode_t mode) {
         return -EIO;
     }
 
+    freeBlock->status = usedblock;
     // 새 디렉토리를 트리에 추가
     uffs_InsertNodeToTree(&dev, UFFS_TYPE_DIR, new_node);
 
