@@ -247,7 +247,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     }
 
     // 블록 초기화
-    URET initBlockResult = initBlock(freeBlock, UFFS_TYPE_FILE, 0);
+    URET initBlockResult = initBlock(&freeBlock, UFFS_TYPE_FILE, 0);
     if (initBlockResult == U_FAIL) {
         fprintf(stderr, "[uffs_create] initBlock error\n");
         return -EINVAL;
@@ -288,7 +288,7 @@ int uffs_mkdir(const char *path, mode_t mode) {
     }
 
     // 블록 초기화
-    result = initBlock(freeBlock, UFFS_TYPE_DIR, 0);
+    result = initBlock(&freeBlock, UFFS_TYPE_DIR, 0);
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_mkdir] block initialization failed\n");
         return -EIO;

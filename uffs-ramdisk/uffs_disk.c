@@ -4,6 +4,7 @@ URET getFreeBlock(data_Disk* disk, data_Block** freeBlock) {
     fprintf(stdout,"[getFreeBlock] called\n");
     for(int i = 0; i<BLOCK_COUNT;i++){
         if(disk->blocks[i].status == unusedblock) {
+            memset(&disk->blocks[i],0,sizeof(data_Block));
             srand(time(NULL)); // 시드 초기화
             u16 random_serial = (u16)(rand() & 0xFFFF); // 16비트 값 생성
             disk->blocks[i].tag.block_id = i;
@@ -17,12 +18,11 @@ URET getFreeBlock(data_Disk* disk, data_Block** freeBlock) {
     return U_FAIL;
 };
 
-URET initBlock(data_Block* block, u8 type, u16 data_len) {
+URET initBlock(data_Block** block, u8 type, u16 data_len) {
     fprintf(stdout,"[initBlock] called\n");
-    memset(block,0,sizeof(data_Block));
-    block->tag.data_len = data_len;
-    block->tag.type = type;
-    block->tag.page_offset = 0;
+    (*block)->tag.data_len = data_len;
+    (*block)->tag.type = type;
+    (*block)->tag.page_offset = 0;
     fprintf(stdout,"[initBlock] finished\n");
 }
 
