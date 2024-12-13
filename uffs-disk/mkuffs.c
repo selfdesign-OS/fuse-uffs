@@ -21,7 +21,7 @@
 #include "uffs_tree.h"
 #include "uffs_types.h"
 #include "uffs_disk.h"
-
+#include <errno.h>
 uffs_Device dev = {0};
 data_Disk disk = {0};
 int fd;
@@ -339,7 +339,7 @@ int main(int argc, char *argv[])
     // USB 디바이스 파일 오픈
     fd = open(argv[3], O_RDWR, 0666);
     if (fd < 0) {
-        fprintf(stderr,"[main] open device error\n");
+        fprintf(stderr, "[main] strerror: %s\n", strerror(errno));
         return -1;
     }
 
