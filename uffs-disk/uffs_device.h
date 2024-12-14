@@ -11,6 +11,7 @@
  */
 typedef struct uffs_DeviceSt {
 	struct uffs_TreeSt				tree;		//!< tree list of block
+	int fd;
 } uffs_Device;
 
 #endif

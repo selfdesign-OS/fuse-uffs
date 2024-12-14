@@ -6,10 +6,6 @@
 #include "uffs/uffs_tree.h"
 /** uffs page buffer */
 struct uffs_BufSt{
-	// struct uffs_BufSt *next;			//!< link to next buffer
-	// struct uffs_BufSt *prev;			//!< link to previous buffer
-	// struct uffs_BufSt *next_dirty;		//!< link to next dirty buffer
-	// struct uffs_BufSt *prev_dirty;		//!< link to previous dirty buffer
 	u8 type;							//!< #UFFS_TYPE_DIR or #UFFS_TYPE_FILE or #UFFS_TYPE_DATA
 	u8 ext_mark;						//!< extension mark. 
 	u16 parent;							//!< parent serial

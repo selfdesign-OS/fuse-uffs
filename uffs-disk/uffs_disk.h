@@ -21,7 +21,7 @@
 #define TOTAL_BLOCKS_DEFAULT			128
 #define ECC_OPTION_DEFAULT				UFFS_ECC_SOFT
 
-#define MAX_FILENAME_LENGTH 32
+#define MAX_FILENAME_LENGTH PAGE_DATA_SIZE_DEFAULT-24
 
 #define UFFS_TYPE_DIR		0
 #define UFFS_TYPE_FILE		1
@@ -32,7 +32,12 @@
 
 #define UFFS_TAG_PAGE_ID_SIZE_BITS  6
 
+#define	US_IFREG	0x8000	/* regular */
+#define	US_IFDIR	0x4000	/* directory */
 
+/** \note 8-bits attr goes to uffs_dirent::d_type */
+#define FILE_ATTR_DIR       (1 << 7)    //!< attribute for directory
+#define FILE_ATTR_WRITE     (1 << 0)    //!< writable
 /**
  * \struct uffs_TagStoreSt
  * \brief uffs tag, 8 bytes, will be store in page spare area.
@@ -81,26 +86,36 @@ struct uffs_MiniHeaderSt {
 };
 typedef struct uffs_MiniHeaderSt uffs_MiniHeader;
 
+
+/**
+ * \structure uffs_FileInfoSt
+ * \brief file/dir entry info in physical storage format //24바이트+32바이트 
+ */
 struct uffs_FileInfoSt {
+    u32 attr;               //!< file/dir attribute
     u32 create_time;
     u32 last_modify;
     u32 access;
     u32 reserved;
     u32 name_len;           //!< length of file/dir name
     char name[MAX_FILENAME_LENGTH];
-	// custom filed
-	short nlink;
-	u32 len;
-	u16 mode;
 };
+
 typedef struct uffs_FileInfoSt uffs_FileInfo;
 
+/**
+ * \struct uffs_ObjectInfoSt
+ * \brief object info
+ */
+typedef struct uffs_ObjectInfoSt {
+    uffs_FileInfo info;
+    u32 len;                //!< length of file
+    u16 serial;             //!< object serial num
+} uffs_ObjectInfo;
 
 typedef struct data_DiskSt {
 } data_Disk;
 
-URET getFreeBlock(data_Disk* disk, data_Block** freeBlock);
-URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id);
 URET diskFormatCheck(int fd);
 URET diskFormat(int fd);
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);

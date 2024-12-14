@@ -1,37 +1,5 @@
 #include "uffs_disk.h"
 
-URET getFreeBlock(data_Disk* disk, data_Block** freeBlock) {
-    fprintf(stdout,"[getFreeBlock] called\n");
-    for(int i = 0; i<BLOCK_COUNT;i++){
-        if(disk->blocks[i].status == unusedblock) {
-            memset(&disk->blocks[i],0,sizeof(data_Block));
-            srand(time(NULL)); // 시드 초기화
-            u16 random_serial = (u16)(rand() & 0xFFFF); // 16비트 값 생성
-            disk->blocks[i].tag.block_id = i;
-            disk->blocks[i].tag.serial = random_serial;
-            *freeBlock = &disk->blocks[i];
-            fprintf(stdout,"[getFreeBlock] finished\n");
-            return U_SUCC;
-        }
-    }
-    fprintf(stderr,"[getFreeBlock] error 1\n");
-    return U_FAIL;
-};
-
-URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id){
-    fprintf(stdout,"[getUsedBlockById] called\n");
-    for(int i =0;i<BLOCK_COUNT;i++){
-        if(disk->blocks[i].tag.block_id==block_id && disk->blocks[i].status==usedblock){
-            *block=&disk->blocks[i];
-            fprintf(stdout,"[getUsedBlockById] finished\n");
-            return U_SUCC;
-        }
-    }
-    fprintf(stderr,"[getUsedBlockById] error 1\n");
-    return U_FAIL;
-    
-}
-
 URET diskFormatCheck(int fd){
     fprintf(stdout,"[diskFormatCheck] called\n");
     char magic[PAGE_DATA_SIZE_DEFAULT];
@@ -51,7 +19,7 @@ static u32 GET_CURRENT_TIME() {
     return (u32)now;
 }
 
-static int writeRootTag(uffs_Tag *tag) {
+static void setRootTag(uffs_Tag *tag) {
     // 태그 값 설정
     tag->data_sum = 0;               // 루트 디렉토리의 이름 체크섬
     tag->seal_byte = 0;              // seal byte 초기화
@@ -67,7 +35,7 @@ static int writeRootTag(uffs_Tag *tag) {
     
     return 0; // 성공
 }
-static int writeRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
+static void setRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
 
     // 루트 블록의 첫 번째 페이지에 미니 헤더 초기화
     miniHeader->status = 0x01; // 페이지 상태 (예: 유효한 페이지)
@@ -76,6 +44,18 @@ static int writeRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
 
     return 0;
 }
+
+static void setRootFileInfo(uffs_FileInfo *file_info){
+    file_info->access = GET_CURRENT_TIME();
+    file_info->attr = FILE_ATTR_DIR;
+    file_info->create_time = GET_CURRENT_TIME();
+    file_info->last_modify = GET_CURRENT_TIME();
+    strcpy(file_info->name,"/");
+    file_info->name_len = 1;
+    file_info->reserved = 0x00;
+    return 0;
+}
+
 URET diskFormat(int fd) {
     fprintf(stdout, "[diskFormat] Disk formatting started\n");
 
@@ -112,14 +92,25 @@ URET diskFormat(int fd) {
     char magic[PAGE_DATA_SIZE_DEFAULT];
     uffs_MiniHeader mini_header = {0};
     uffs_Tag tag={0};
-    // write root block
-    writeRootTag(&tag);
-    writeRootMiniHeader(&mini_header);
 
     memset(magic, 0, sizeof(magic));
     memcpy(magic, "UFFS", 4);
 
-    if (writePage(fd,1,0,&mini_header,magic,&tag) < 0) {
+    if (writePage(fd,0,0,&mini_header,magic,&tag) < 0) {
+        fprintf(stderr, "[diskFormat] write magic number error\n");    
+        return U_FAIL;
+    }
+
+    // write root block
+    uffs_FileInfo file_info={0};
+    uffs_MiniHeader mini_header = {0};
+    uffs_Tag tag={0};
+
+    setRootFileInfo(&file_info);
+    setRootTag(&tag);
+    setRootMiniHeader(&mini_header);
+
+    if (writePage(fd,1,0,&mini_header,(char*)&file_info,&tag) < 0) {
         fprintf(stderr, "[diskFormat] write magic number error\n");    
         return U_FAIL;
     }

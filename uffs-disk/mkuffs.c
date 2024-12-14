@@ -23,8 +23,7 @@
 #include "uffs_disk.h"
 #include <errno.h>
 uffs_Device dev = {0};
-data_Disk disk = {0};
-int fd;
+
 int uffs_init()
 {
 	fprintf(stdout, "[uffs_init] called\n");
@@ -41,24 +40,25 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 
 	TreeNode *node;
 	URET result;
-    int isDir = 1;
-	
-	memset(stbuf, 0, sizeof(struct stat));
+    u8 type = UFFS_TYPE_DIR;
+	uffs_ObjectInfo object_info ={0};
 
+	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
-		result = uffs_TreeFindNodeByName(&dev, &node, path, &isDir);
+		result = uffs_TreeFindNodeByName(&dev, &node, path, &type,&object_info);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, &node, path, &isDir) != U_SUCC) {
+		if (result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info) != U_SUCC) {
 			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
             return -ENOENT;
         }
 	}
-    
-    stbuf->st_mode = (isDir ? S_IFDIR : S_IFREG) | node->info.mode;
-    stbuf->st_nlink = node->info.nlink;
-    stbuf->st_size = node->info.len;
-	
+    readPage(dev.fd,node->u.data.block)
+    stbuf->st_mode = (object_info.info.attr & FILE_ATTR_DIR ? US_IFDIR : US_IFREG);
+    stbuf->st_nlink = 2;
+    stbuf->st_size = object_info.len;
+
+
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;
 }
@@ -335,7 +335,7 @@ struct fuse_operations uffs_oper = {
 int main(int argc, char *argv[])
 {
     // USB 디바이스 파일 오픈
-    fd = open(argv[3], O_RDWR, 0666);
+    dev.fd = open(argv[3], O_RDWR, 0666);
     if (fd < 0) {
         fprintf(stderr, "[main] strerror: %s\n", strerror(errno));
         return -1;
