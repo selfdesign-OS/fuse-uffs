@@ -28,10 +28,8 @@ int fd;
 int uffs_init()
 {
 	fprintf(stdout, "[uffs_init] called\n");
-
 	uffs_TreeInit(&dev);
 	uffs_BuildTree(&dev, fd);
-	uffs_InitBlock(&disk);
 	fprintf(stdout, "[uffs_init] finished\n");
 	return 0;
 }

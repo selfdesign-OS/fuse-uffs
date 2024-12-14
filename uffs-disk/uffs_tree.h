@@ -12,21 +12,27 @@
 
 struct DirhSt {		/* 8 bytes */
 	u16 block;
+	u16 checksum;	/* check sum of dir name */
 	u16 parent;
 	u16 serial;
 };
 
+
 struct FilehSt {	/* 12 bytes */
 	u16 block;
+	u16 checksum;	/* check sum of file name */
 	u16 parent;
 	u16 serial;
+	u32 len;		/* file length total */
 };
 
 struct FdataSt {	/* 10 bytes */
 	u16 block;
 	u16 parent;
+	u32 len;		/* file data length on this block */
 	u16 serial;
 };
+
 
 #define GET_FILE_HASH(serial)			(serial & FILE_NODE_HASH_MASK)
 #define GET_DIR_HASH(serial)			(serial & DIR_NODE_HASH_MASK)
@@ -39,7 +45,6 @@ typedef struct uffs_TreeNodeSt {
 		struct FilehSt file;
 		struct FdataSt data;
 	} u;
-	uffs_FileInfo info;
 	uint64_t hash_next;
 	uint64_t hash_prev;
 } TreeNode;

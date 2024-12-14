@@ -40,19 +40,41 @@ static u32 GET_CURRENT_TIME() {
 URET uffs_BuildTree(uffs_Device *dev, int fd) {
     fprintf(stdout, "[uffs_BuildTree] called\n");
 
-    TreeNode *root = (TreeNode *) malloc(sizeof(TreeNode));
+    // 블록 및 페이지 초기화
+    for (int block = 1; block < TOTAL_BLOCKS_DEFAULT; block++) {
+        uffs_Tag tag = {0};
+        uffs_MiniHeader mini_header = {0};
+        readPage(fd,block,0,&mini_header,NULL,&tag);
+        TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
 
-    memset(root, 0, sizeof(TreeNode));
-
-    char buf[BLOCK_SIZE] = {0};
-    uffs_FileInfo fileInfo;
-    data_Tag* tag = (data_Tag*)malloc(sizeof(data_Tag));
-    if(pread(fd,buf,sizeof(buf),BLOCK_SIZE)<0){
-        return U_FAIL;
+        switch (tag.s.type) {
+		case UFFS_TYPE_DIR:
+			node->u.dir.parent = tag.s.parent;
+			node->u.dir.serial = tag.s.serial;
+			node->u.dir.block = block;
+			node->u.dir.checksum = tag.data_sum;
+            uffs_InsertToDirEntry(dev, node);
+			break;
+		case UFFS_TYPE_FILE:
+			node->u.file.parent = tag.s.parent;
+			node->u.file.serial = tag.s.serial;
+			node->u.file.block = block;
+			node->u.file.checksum = tag.data_sum;
+            node->u.file.len = tag.s.data_len;
+            uffs_InsertToFileEntry(dev, node);
+			break;
+		case UFFS_TYPE_DATA:
+			node->u.data.parent = tag.s.parent;
+			node->u.data.serial = tag.s.serial;
+			node->u.data.block = block;
+            node->u.data.len = tag.s.data_len;
+            uffs_InsertToDataEntry(dev, node);
+			break;
+		default:
+			fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
+			break;
+		}
     }
-    
-    memcpy(tag, buf, sizeof(data_Tag));
-
 
     // 성공적으로 초기화된 경우
     fprintf(stderr,"[uffs_BuildTree] finished\n");

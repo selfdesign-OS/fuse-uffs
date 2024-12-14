@@ -5,9 +5,22 @@
 #include <time.h>
 #include <stdio.h>
 #include <sys/types.h>
-#define BLOCK_COUNT 512               //!< 블록 개수
-#define BLOCK_SIZE 512
-#define BLOCK_DATA_SIZE 496
+
+/** ECC options (uffs_StorageAttrSt.ecc_opt) */
+#define UFFS_ECC_NONE		0	//!< do not use ECC
+#define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC
+#define UFFS_ECC_HW			2	//!< Flash driver(or by hardware) calculate the ECC
+#define UFFS_ECC_HW_AUTO	3	//!< Hardware calculate the ECC and automatically write to spare.
+
+/* default basic parameters of the NAND device */
+#define PAGES_PER_BLOCK_DEFAULT			32
+#define PAGE_DATA_SIZE_DEFAULT			512
+#define PAGE_SPARE_SIZE_DEFAULT			16
+#define PAGE_SIZE_DEFAULT               528
+#define STATUS_BYTE_OFFSET_DEFAULT		5
+#define TOTAL_BLOCKS_DEFAULT			128
+#define ECC_OPTION_DEFAULT				UFFS_ECC_SOFT
+
 #define MAX_FILENAME_LENGTH 32
 
 #define UFFS_TYPE_DIR		0
@@ -16,17 +29,57 @@
 #define UFFS_TYPE_RESV		3
 #define UFFS_TYPE_INVALID	0xFF
 #define ROOT_DIR_SERIAL	0				//!< serial num of root dir
-typedef enum {usedblock, unusedblock} block_status;
 
-struct data_TagSt {
-    u16 block_id;    //!< 블록 ID
-    u8 type;         //!< 블록 타입 (파일, 디렉터리, 데이터 등)
-    u16 data_len;    //!< 데이터 길이
-    u16 serial;      //!< 고유 번호
-    u16 parent;      //!< 부모 블록 ID
-    block_status status; //!< 블록 상태
+#define UFFS_TAG_PAGE_ID_SIZE_BITS  6
+
+
+/**
+ * \struct uffs_TagStoreSt
+ * \brief uffs tag, 8 bytes, will be store in page spare area.
+ */
+struct uffs_TagStoreSt {
+	u32 dirty:1;		//!< 0: dirty, 1: clear
+	u32 valid:1;		//!< 0: valid, 1: invalid
+	u32 type:2;			//!< block type: #UFFS_TYPE_DIR, #UFFS_TYPE_FILE, #UFFS_TYPE_DATA
+	u32 block_ts:2;		//!< time stamp of block;
+	u32 data_len:12;	//!< length of page data
+	u32 serial:14;		//!< serial number
+
+	u32 parent:10;		//!< parent's serial number
+	u32 page_id:UFFS_TAG_PAGE_ID_SIZE_BITS;		//!< page id
+#if UFFS_TAG_RESERVED_BITS != 0
+	u32 reserved:UFFS_TAG_RESERVED_BITS;		//!< reserved, for UFFS2
+#endif
+	u32 tag_ecc:12;		//!< tag ECC
 };
-typedef struct data_TagSt data_Tag;
+
+#define TAG_ECC_DEFAULT (0xFFF)	//!< 12-bit '1'
+
+
+/** 
+ * \struct uffs_TagsSt 12바이트
+ */ 
+struct uffs_TagsSt {
+	struct uffs_TagStoreSt s;		/* store must be the first member 8바이트 */ 
+
+	/** data_sum for file or dir name */
+	u16 data_sum;
+
+	/** internal used */
+	u8 seal_byte;			//!< seal byte.
+};
+typedef struct uffs_TagsSt uffs_Tag;
+
+/** 4바이트
+ * \struct uffs_MiniHeaderSt
+ * \brief the mini header resides on the head of page data
+ */
+struct uffs_MiniHeaderSt {
+	u8 status; // 0xFF -> 새것 , 0x01 -> 사용중, 그 외의 상태는 dirty 로 정의
+	u8 reserved;
+	u16 crc;
+};
+typedef struct uffs_MiniHeaderSt uffs_MiniHeader;
 
 struct uffs_FileInfoSt {
     u32 create_time;
@@ -42,22 +95,14 @@ struct uffs_FileInfoSt {
 };
 typedef struct uffs_FileInfoSt uffs_FileInfo;
 
-typedef struct data_BlockSt {
-    union{
-        char data[BLOCK_DATA_SIZE];
-        uffs_FileInfo fileInfo;
-    } u;
-    struct data_TagSt tag;
-} data_Block;
 
 typedef struct data_DiskSt {
-    struct data_BlockSt blocks[BLOCK_COUNT];
 } data_Disk;
 
 URET getFreeBlock(data_Disk* disk, data_Block** freeBlock);
-URET initBlock(data_Block** block, u8 type, u16 data_len);
 URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id);
-void uffs_InitBlock(data_Disk *disk);
 URET diskFormatCheck(int fd);
 URET diskFormat(int fd);
+URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
+URET writePage(int fd,int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
 #endif

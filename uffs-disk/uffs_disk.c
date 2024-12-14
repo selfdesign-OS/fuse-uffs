@@ -18,14 +18,6 @@ URET getFreeBlock(data_Disk* disk, data_Block** freeBlock) {
     return U_FAIL;
 };
 
-URET initBlock(data_Block** block, u8 type, u16 data_len) {
-    fprintf(stdout,"[initBlock] called\n");
-    (*block)->tag.data_len = data_len;
-    (*block)->tag.type = type;
-    (*block)->tag.page_offset = 0;
-    fprintf(stdout,"[initBlock] finished\n");
-}
-
 URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id){
     fprintf(stdout,"[getUsedBlockById] called\n");
     for(int i =0;i<BLOCK_COUNT;i++){
@@ -40,27 +32,17 @@ URET getUsedBlockById(data_Disk *disk, data_Block **block, u16 block_id){
     
 }
 
-void uffs_InitBlock(data_Disk *disk){
-    fprintf(stdout,"[uffs_InitBlock] called\n");
-    for(int i=0;i<BLOCK_DATA_SIZE;i++){
-        disk->blocks[i].status = unusedblock;
-    }
-    fprintf(stdout,"[uffs_InitBlock] finished\n");
-}
-
 URET diskFormatCheck(int fd){
-    fprintf(stdout,"[uffs_InitBlock] called\n");
-    char buf[4];
-    memset(buf,0,sizeof(buf));
-    if (pread(fd, buf, sizeof(buf), 0) != sizeof(buf)) {
-        fprintf(stderr,"[diskFormatCheck] read magic number error\n");
-        return U_FAIL;
-    }
-    if (memcmp(buf, "UFFS",4) == 0) {
+    fprintf(stdout,"[diskFormatCheck] called\n");
+    char magic[PAGE_DATA_SIZE_DEFAULT];
+
+    readPage(fd,0,0,NULL,magic,NULL);
+
+    if (memcmp(magic, "UFFS",4) == 0) {
         fprintf(stdout,"[diskFormatCheck] finished\n");
         return U_SUCC;
     }
-    fprintf(stderr,"[diskFormatCheck] error\n");
+    fprintf(stderr,"[diskFormatCheck] is not uffs\n");
     return U_FAIL;
 }
 
@@ -69,85 +51,122 @@ static u32 GET_CURRENT_TIME() {
     return (u32)now;
 }
 
-static int write_root_block(int fd) {
-    char buf[BLOCK_SIZE] = {0}; // 512바이트 버퍼 초기화
-    data_Tag tag;
-    // 루트 블록 tag 초기화
-    tag.block_id = 1;
-    tag.data_len = 0;
-    tag.status = usedblock;
-    tag.type = UFFS_TYPE_DIR;
-    tag.serial = ROOT_DIR_SERIAL;
-    tag.parent = ROOT_DIR_SERIAL;
-    uffs_FileInfo fileInfo = {0};
-    // 루트 블록 FileInfo 초기화
-    fileInfo.create_time = GET_CURRENT_TIME(); // 현재 시간 함수 호출
-    fileInfo.last_modify = GET_CURRENT_TIME(); // 생성 시점과 동일하게 초기화
-    fileInfo.access = GET_CURRENT_TIME();      // 액세스 시간도 동일하게 초기화
-    fileInfo.reserved = 0;                     // 예약 필드 초기화
-    fileInfo.name_len = 1;                     // 루트 이름 길이 ("/"만 포함)
-    fileInfo.nlink = 2;    // 디렉토리의 기본 링크 수는 2 ("."과 "..")
-    fileInfo.len = 0;      // 디렉토리이므로 길이는 0
-    fileInfo.mode = 0666;
-
-    // 구조체를 버퍼에 복사
-    size_t offset = 0;
-
-    // 1. tag 복사
-    memcpy(buf + offset, tag, sizeof(data_Tag));
-    offset += sizeof(data_Tag);
-
-    // 2. fileInfo 복사
-    memcpy(buf + offset, fileInfo, sizeof(uffs_FileInfo));
-    offset += sizeof(uffs_FileInfo);
-
-    // 3. pwrite로 버퍼 쓰기
-    if (pwrite(fd, buf, sizeof(buf), BLOCK_SIZE) < 0) {
-        fprintf(stderr, "[diskFormat] write tag and fileInfo error\n");
-        return U_FAIL;
-    }
-
+static int writeRootTag(uffs_Tag *tag) {
+    // 태그 값 설정
+    tag->data_sum = 0;               // 루트 디렉토리의 이름 체크섬
+    tag->seal_byte = 0;              // seal byte 초기화
+    tag->s.dirty = 1;                // 페이지가 깨끗함
+    tag->s.valid = 0;                // 유효한 페이지
+    tag->s.type = UFFS_TYPE_DIR;     // 디렉토리 타입
+    tag->s.block_ts = 0;             // 블록 타임스탬프 초기화
+    tag->s.data_len = 0;             // 데이터 길이 (디렉토리라서 0)
+    tag->s.serial = ROOT_DIR_SERIAL; // 루트 디렉토리 시리얼 번호
+    tag->s.parent = ROOT_DIR_SERIAL; // 루트 디렉토리는 부모 없음
+    tag->s.page_id = 0;              // 첫 번째 페이지
+    tag->s.tag_ecc = TAG_ECC_DEFAULT; // 태그 ECC 기본값
+    
     return 0; // 성공
 }
+static int writeRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
 
-URET diskFormat(int fd){
-     // 디스크 초기화
-    char buffer[BLOCK_SIZE] = {0}; // 0으로 초기화된 블록
-    off_t offset = 0;
+    // 루트 블록의 첫 번째 페이지에 미니 헤더 초기화
+    miniHeader->status = 0x01; // 페이지 상태 (예: 유효한 페이지)
+    miniHeader->reserved = 0x00; // 예약된 값
+    miniHeader->crc = 0xFFFF; // 초기 CRC 값 (임의로 설정)
 
-    while (1) {
-        ssize_t bytes_written = pwrite(fd, buffer, BLOCK_SIZE, offset);
-        if (bytes_written < 0) {
-            fprintf(stderr, "[diskFormat] Disk initialization error.\n");
-            close(fd);
-            return -1;
-        }
+    return 0;
+}
+URET diskFormat(int fd) {
+    fprintf(stdout, "[diskFormat] Disk formatting started\n");
 
-        offset += BLOCK_SIZE;
+    char data[PAGE_DATA_SIZE_DEFAULT] = {0};
 
-        if (offset > BLOCK_SIZE*(BLOCK_COUNT-1)) {
-            break; // EOF 도달
+    // 블록 및 페이지 초기화
+    for (int block = 0; block < TOTAL_BLOCKS_DEFAULT; block++) {
+        for (int page = 0; page < PAGES_PER_BLOCK_DEFAULT; page++) {
+            struct uffs_MiniHeaderSt mini_header = {0xFF, 0x00, (u16)(block + page)}; // CRC: 블록+페이지 합
+            struct uffs_TagsSt tag = {0};
+
+            // 태그 초기화
+            tag.s.dirty = 1;
+            tag.s.valid = 0;
+            tag.s.type = 0; 
+            tag.s.block_ts = 0;
+            tag.s.data_len = 0; 
+            tag.s.serial = block;
+            tag.s.parent = 0;
+            tag.s.page_id = page;
+            tag.s.tag_ecc = TAG_ECC_DEFAULT;
+
+            tag.data_sum = 0;
+            tag.seal_byte = 0;
+            // 페이지 작성
+            if (writePage(fd, block, page, &mini_header, data, &tag) < 0) {
+                fprintf(stderr, "[diskFormat] Failed to write block %d, page %d\n", block, page);
+                return U_FAIL;
+            }
         }
     }
-    fprintf(stdout, "[diskFormat] Disk reset complete.\n");    
 
     // write magic number
-    char buf[4];
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf, "UFFS", 4);
-    if (pwrite(fd, buf, sizeof(buf), 0) < 0) {
-        fprintf(stderr, "[diskFormat] write magic number error\n");    
-        return U_FAIL;
-    }
-    
+    char magic[PAGE_DATA_SIZE_DEFAULT];
+    uffs_MiniHeader mini_header = {0};
+    uffs_Tag tag={0};
     // write root block
-    write_root_block(fd);
-    char buf[512];
-    if (pwrite(fd, buf, sizeof(buf), BLOCK_SIZE) < 0) {
+    writeRootTag(&tag);
+    writeRootMiniHeader(&mini_header);
+
+    memset(magic, 0, sizeof(magic));
+    memcpy(magic, "UFFS", 4);
+
+    if (writePage(fd,1,0,&mini_header,magic,&tag) < 0) {
         fprintf(stderr, "[diskFormat] write magic number error\n");    
         return U_FAIL;
     }
-
-    fprintf(stdout, "[diskFormat] Disk initialization complete.\n");
+    fprintf(stdout, "[diskFormat] Disk formatting complete\n");
     return U_SUCC;
 }
+
+
+
+
+URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
+    fprintf(stdout, "[readPage] readPage called.\n");
+    char page_buf[PAGE_SIZE_DEFAULT];
+    if(pread(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
+        fprintf(stderr, "[readPage] readPage error.\n");
+        return U_FAIL;
+    }
+    off_t offset = 0;
+    if(mini_header != NULL)
+        memcpy(mini_header, page_buf+offset,sizeof(uffs_MiniHeader));
+    offset += sizeof(uffs_MiniHeader);
+    if(data!=NULL)
+        memcpy(data, page_buf+offset,PAGE_DATA_SIZE_DEFAULT);
+    offset += sizeof(PAGE_DATA_SIZE_DEFAULT);
+    if(tag!=NULL)
+        memcpy(tag, page_buf+offset,sizeof(uffs_Tag));
+
+    fprintf(stdout, "[readPage] readPage finished.\n");
+    return U_SUCC;
+}
+
+URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
+    fprintf(stdout, "[writePage] writePage called.\n");
+    char page_buf[PAGE_SIZE_DEFAULT];
+
+    off_t offset = 0;
+    memcpy(page_buf+offset,mini_header,sizeof(uffs_MiniHeader));
+    offset += sizeof(uffs_MiniHeader);
+    memcpy(page_buf+offset,data,PAGE_DATA_SIZE_DEFAULT);
+    offset += sizeof(PAGE_DATA_SIZE_DEFAULT);
+    memcpy(page_buf+offset,tag,sizeof(uffs_Tag));
+
+    if(pwrite(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
+        fprintf(stderr, "[writePage] writePage error.\n");
+        return U_FAIL;
+    }
+    fprintf(stdout, "[writePage] writePage finished.\n");
+    return U_SUCC;
+}
+    
