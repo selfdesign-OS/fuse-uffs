@@ -8,16 +8,7 @@
 #include "uffs_types.h"
 #include "uffs_disk.h"
 
-#define UFFS_TYPE_DIR		0
-#define UFFS_TYPE_FILE		1
-#define UFFS_TYPE_DATA		2
-#define UFFS_TYPE_RESV		3
-#define UFFS_TYPE_INVALID	0xFF
-
-#define MAX_FILENAME_LENGTH         128
-
 #define EMPTY_NODE 0xffff				//!< special index num of empty node.
-#define ROOT_DIR_SERIAL	0				//!< serial num of root dir
 
 struct DirhSt {		/* 8 bytes */
 	u16 block;
@@ -36,20 +27,6 @@ struct FdataSt {	/* 10 bytes */
 	u16 parent;
 	u16 serial;
 };
-
-struct uffs_FileInfoSt {
-    u32 create_time;
-    u32 last_modify;
-    u32 access;
-    u32 reserved;
-    u32 name_len;           //!< length of file/dir name
-    char name[MAX_FILENAME_LENGTH];
-	// TODO: warning
-	short nlink;
-	u32 len;
-	u16 mode;
-};
-typedef struct uffs_FileInfoSt uffs_FileInfo;
 
 #define GET_FILE_HASH(serial)			(serial & FILE_NODE_HASH_MASK)
 #define GET_DIR_HASH(serial)			(serial & DIR_NODE_HASH_MASK)

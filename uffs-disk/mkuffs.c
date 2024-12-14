@@ -30,7 +30,7 @@ int uffs_init()
 	fprintf(stdout, "[uffs_init] called\n");
 
 	uffs_TreeInit(&dev);
-	uffs_BuildTree(&dev);
+	uffs_BuildTree(&dev, fd);
 	uffs_InitBlock(&disk);
 	fprintf(stdout, "[uffs_init] finished\n");
 	return 0;
@@ -358,6 +358,5 @@ int main(int argc, char *argv[])
     }
 
     fprintf(stderr, "[main] init finished\n");
-    
     return fuse_main(3, argv, &uffs_oper, NULL);
 }
