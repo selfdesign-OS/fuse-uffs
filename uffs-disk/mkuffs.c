@@ -203,64 +203,169 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 }
 
 int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
-		      struct fuse_file_info *fi)
-{   
-    fprintf(stdout, "[uffs_write] called\n");
-    URET block_result, node_result;
-    TreeNode* node;
-    data_Block* block;
+              struct fuse_file_info *fi) {
+    fprintf(stdout, "[uffs_write] called, path: %s, size: %zu\n", path, size);
 
-    // 쓰기 범위 확인
-    if (size > BLOCK_DATA_SIZE) {
-        fprintf(stderr, "[uffs_write] file size too big\n");
-        return -EFBIG; // 파일 크기 초과 오류
+    TreeNode *file_node;
+    TreeNode *data_node;
+
+    // 파일 노드 찾기
+    if (uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, path) == U_FAIL) {
+        fprintf(stderr, "[uffs_write] file node not found\n");
+        return -ENOENT;
     }
-    node_result = uffs_TreeFindFileNodeByNameWithoutParent(&dev, &node, path);
-    if(node_result == U_FAIL) {
-        fprintf(stderr, "[uffs_write] find node error\n");
-        return -ENOSPC;
+
+    // 데이터 노드 찾기
+    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
+    if (data_node == NULL) {
+        // 데이터 노드가 없으면 생성
+        int data_block_id;
+        if (getFreeBlock(dev.fd, &data_block_id) == U_FAIL) {
+            fprintf(stderr, "[uffs_write] no free block available for data\n");
+            return -ENOSPC;
+        }
+
+        data_node = (TreeNode *)malloc(sizeof(TreeNode));
+        if (!data_node) {
+            fprintf(stderr, "[uffs_write] memory allocation failed for data_node\n");
+            return -ENOMEM;
+        }
+
+        if (initNode(&dev, data_node, data_block_id, UFFS_TYPE_DATA, file_node->u.file.serial) == U_FAIL) {
+            fprintf(stderr, "[uffs_write] data node initialization failed\n");
+            free(data_node);
+            return -EIO;
+        }
+
+        file_node->u.file.block = data_block_id;
+        uffs_InsertNodeToTree(&dev, UFFS_TYPE_DATA, data_node);
     }
-    block_result = getUsedBlockById(&disk,&block, node->u.file.block);
-    if(block_result == U_FAIL) {
-        fprintf(stderr, "[uffs_write] getUsedBlockById error\n");
-        return -ENOSPC;
+
+    // 데이터 블록 초기화 (모든 페이지를 0으로 설정)
+    int block_id = data_node->u.data.block;
+    for (int page_id = 0; page_id < PAGES_PER_BLOCK_DEFAULT; page_id++) {
+        char empty_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+        uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
+        uffs_Tag tag = {0};
+        tag.s.dirty = 1;
+        tag.s.valid = 0;
+        tag.s.type = UFFS_TYPE_DATA;
+        tag.s.data_len = 0;  // 초기화된 페이지는 데이터 없음
+        tag.s.serial = data_node->u.data.serial;
+        tag.s.page_id = page_id;
+        tag.s.parent = file_node->u.file.serial;
+
+        // 빈 페이지 쓰기
+        if (writePage(dev.fd, block_id, page_id, &mini_header, empty_buf, &tag) == U_FAIL) {
+            fprintf(stderr, "[uffs_write] failed to initialize page %d\n", page_id);
+            return -EIO;
+        }
     }
-	memcpy(block->data, buf, size);
-    node->info.len = size;
-    block->tag.data_len = node->info.len;
-    return size;
+
+    // 현재까지 작성된 데이터
+    size_t written = 0;
+
+    // 한 블록의 최대 데이터 크기
+    size_t max_block_size = PAGES_PER_BLOCK_DEFAULT * PAGE_DATA_SIZE_DEFAULT;
+
+    // 작성할 데이터 크기 제한
+    if (size > max_block_size) {
+        size = max_block_size;
+    }
+
+    // 데이터 쓰기
+    int page_id = 0;
+    while (written < size) {
+        char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+        size_t write_size = PAGE_DATA_SIZE_DEFAULT;
+
+        // 남은 데이터 크기 확인
+        if (size - written < write_size) {
+            write_size = size - written;
+        }
+
+        // 입력 데이터를 복사
+        memcpy(data_buf, buf + written, write_size);
+
+        // 페이지 태그 설정
+        uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
+        uffs_Tag tag = {0};
+        tag.s.dirty = 1;
+        tag.s.valid = 0;
+        tag.s.type = UFFS_TYPE_DATA;
+        tag.s.data_len = write_size;
+        tag.s.serial = data_node->u.data.serial;
+        tag.s.page_id = page_id;
+        tag.s.parent = file_node->u.file.serial;
+
+        // 페이지 쓰기
+        if (writePage(dev.fd, block_id, page_id, &mini_header, data_buf, &tag) == U_FAIL) {
+            fprintf(stderr, "[uffs_write] failed to write page %d\n", page_id);
+            return -EIO;
+        }
+
+        written += write_size;
+        page_id++;
+        if(page_id>=PAGES_PER_BLOCK_DEFAULT)
+            break;
+    }
+
+    // 파일 크기 갱신
+    file_node->u.file.len = written;
+
+    // 메타데이터 갱신
+    uffs_FileInfo file_info = {0};
+    updateFileInfoPage(&dev, file_node, &file_info, 0);
+
+    fprintf(stdout, "[uffs_write] finished\n");
+    return written;
 }
+
 
 int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     fprintf(stdout, "[uffs_create] called, path: %s\n", path);
 
-    // 블록 할당
-    data_Block *freeBlock;
-    URET result = getFreeBlock(&disk, &freeBlock);
+    // 부모 디렉토리 노드 찾기
+    TreeNode *parent_node = NULL;
+    URET result = uffs_TreeFindParentNodeByName(&dev, &parent_node, path, 0);
     if (result == U_FAIL) {
-        fprintf(stderr, "[uffs_create] get freeblock error\n");
+        fprintf(stderr, "[uffs_create] parent node not found\n");
+        return -ENOENT;
+    }
+
+    // 파일 블록 할당
+    int file_block_id;
+    u16 serial;
+    if (getFreeBlock(dev.fd, &file_block_id, &serial) == U_FAIL) {
+        fprintf(stderr, "[uffs_create] no free block available for file\n");
         return -ENOSPC;
     }
 
-    // 블록 초기화
-    URET initBlockResult = initBlock(&freeBlock, UFFS_TYPE_FILE, 0);
-    if (initBlockResult == U_FAIL) {
-        fprintf(stderr, "[uffs_create] initBlock error\n");
-        return -EINVAL;
+    // 파일 노드 생성
+    TreeNode *file_node = (TreeNode *)malloc(sizeof(TreeNode));
+
+    // 파일 노드 초기화
+    if (initNode(&dev, file_node, file_block_id, UFFS_TYPE_FILE, serial) == U_FAIL) {
+        fprintf(stderr, "[uffs_create] file node initialization failed\n");
+        return -EIO;
     }
 
-    // 노드 생성
-    TreeNode *node = (TreeNode *) malloc(sizeof(TreeNode));
-    memset(node, 0, sizeof(TreeNode));
-    URET initNodeResult = initNode(&dev, node, freeBlock, path, UFFS_TYPE_FILE);
-    if (initNodeResult == U_FAIL) {
-        fprintf(stderr, "[uffs_create] init node error\n");
-        return -EINVAL;
+    // 메타데이터 생성 및 작성
+    uffs_FileInfo file_info = {0};
+
+    // 이름 추출
+    strncpy(file_info.name, strrchr(path, '/') ? strrchr(path, '/') + 1 : path, MAX_FILENAME_LENGTH);
+    fprintf(stderr, "[uffs_create] %s\n",file_info.name);
+
+    if (updateFileInfoPage(&dev, file_node, &file_info) == U_FAIL) {
+        fprintf(stderr, "[uffs_create] file metadata write error\n");
+        return -EIO;
     }
 
-    freeBlock->status = usedblock;
-    uffs_InsertNodeToTree(&dev, UFFS_TYPE_FILE, node);
+    // 파일 노드 삽입
+    uffs_InsertNodeToTree(&dev, UFFS_TYPE_FILE, file_node);
 
+    fprintf(stdout, "[uffs_create] finished\n");
     return 0;
 }
 

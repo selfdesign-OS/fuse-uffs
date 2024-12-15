@@ -81,7 +81,7 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent, uffs_ObjectInfo* object_info);
 TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial);
 TreeNode * uffs_TreeFindDataNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent);
-
+TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent);
 void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 
 // custom 
@@ -92,5 +92,5 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
 URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist);
-
+URET initNode(uffs_Device *dev, TreeNode *node, int block_id, u8 type, u16 parent_serial);
 #endif

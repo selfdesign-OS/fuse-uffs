@@ -237,6 +237,22 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
     return NULL;
 }
 
+TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
+    TreeNode *node;
+    struct uffs_TreeSt *tree = &(dev->tree);
+    for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
+		node = tree->data_entry[i];
+		while (node != EMPTY_NODE) {
+			if (node->u.data.parent == parent) {
+                fprintf(stdout,"[uffs_TreeFindDataNodeByParent] finished\n");
+                return node;
+			}
+			node = node->hash_next;
+		}
+	}
+    return NULL;
+}
+
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
 
@@ -372,9 +388,9 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
     case UFFS_TYPE_FILE:
         uffs_InsertToFileEntry(dev, node);
         break;
-    // case UFFS_TYPE_DATA:
-    //     uffs_InsertToDataEntry(dev, node);
-    //     break;
+    case UFFS_TYPE_DATA:
+        uffs_InsertToDataEntry(dev, node);
+        break;
     default:
         fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
         break;
@@ -461,3 +477,29 @@ int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
     }
 }
 
+// 노드 초기화
+URET initNode(uffs_Device *dev, TreeNode *node, int block_id,u8 type, u16 parent_serial, u16 serial) {
+    memset(node,0,sizeof(TreeNode));
+
+    if (type == UFFS_TYPE_FILE) {
+        node->u.file.block = block_id;
+        node->u.file.checksum = 0; 
+        node->u.file.parent = parent_serial;
+        node->u.file.serial = serial;
+        node->u.file.len = 0;
+    } else if (type == UFFS_TYPE_DIR) {
+        node->u.dir.block = block_id;
+        node->u.dir.checksum = 0;
+        node->u.dir.parent = parent_serial;
+        node->u.dir.serial = serial;
+    } else if (type == UFFS_TYPE_DATA) {
+        node->u.data.block = block_id;
+        node->u.data.parent = parent_serial;
+        node->u.data.len = 0;
+        node->u.data.serial = serial;
+    } else {
+        return U_FAIL;
+    }
+
+    return U_SUCC;
+}
