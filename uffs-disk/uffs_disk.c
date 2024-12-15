@@ -40,7 +40,7 @@ static void setRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
     // 루트 블록의 첫 번째 페이지에 미니 헤더 초기화
     miniHeader->status = 0x01; // 페이지 상태 (예: 유효한 페이지)
     miniHeader->reserved = 0x00; // 예약된 값
-    miniHeader->crc = 0xFFFF; // 초기 CRC 값 (임의로 설정)
+    miniHeader->crc = 0xFFFF; // 초기 CRC 값
 
     return 0;
 }
@@ -162,11 +162,68 @@ URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, c
 }
 
 URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info) {
+    uffs_Tag tag = {0};
     for (int block = 0; block < TOTAL_BLOCKS_DEFAULT; block++) {
-        if (readPage(fd, block, 0, NULL, (char *)file_info, NULL) == U_SUCC) {
-            return U_SUCC;
+        if (readPage(fd, block, 0, NULL, (char *)file_info, &tag) == U_SUCC) {
+            if (tag.s.serial == serial)
+                return U_SUCC;
         }
     }
     return U_FAIL;
 }
     
+// 빈 블록 찾기
+URET getFreeBlock(int fd, int *free_block_id, u16 *serial) {
+    // 여기서는 2번 블록부터 free라고 가정 (0:마법,1:root)
+    for (int i=2;i<TOTAL_BLOCKS_DEFAULT;i++){
+        // mini_header의 status로 해당 블록 사용중인지 확인
+        uffs_MiniHeader mini_header={0};
+        uffs_Tag tag;
+        if (readPage(fd,i,0,&mini_header,NULL,&tag)==U_SUCC) {
+            if (mini_header.status == 0xFF) {
+                *free_block_id = i;
+                *serial = tag.s.serial;
+                return U_SUCC;
+            }
+        }
+    }
+    return U_FAIL;
+}
+
+// 메타데이터 작성
+URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_created, u8 type) {
+
+    uffs_MiniHeader mini_header={0x01,0x00,0xFFFF};
+    uffs_Tag tag={0};
+    if(is_created){
+        file_info->create_time = GET_CURRENT_TIME();
+    }
+    if(type==UFFS_TYPE_DIR){
+        file_info->attr = FILE_ATTR_DIR;
+        tag.s.type = UFFS_TYPE_FILE;
+        tag.s.serial = node->u.dir.serial;
+        tag.s.parent = node->u.dir.parent;
+    }else{
+        file_info->attr = FILE_ATTR_WRITE; // 일반 파일
+        tag.s.type = UFFS_TYPE_FILE;
+        tag.s.serial = node->u.file.serial;
+        tag.s.parent = node->u.file.parent;
+    }
+    file_info->access = GET_CURRENT_TIME();
+    file_info->last_modify = GET_CURRENT_TIME();
+    file_info->name_len = strlen(file_info->name);
+    tag.s.dirty = 1;
+    tag.s.valid = 0;
+    tag.s.block_ts = 0;
+    tag.s.data_len = 0;
+    tag.s.page_id = 0;
+    tag.s.tag_ecc = TAG_ECC_DEFAULT;
+    tag.data_sum = 0;
+    tag.seal_byte = 0;
+
+    if (writePage(dev->fd, node->u.file.block,0,&mini_header,(char*)file_info,&tag)<0) {
+        return U_FAIL;
+    }
+
+    return U_SUCC;
+}
