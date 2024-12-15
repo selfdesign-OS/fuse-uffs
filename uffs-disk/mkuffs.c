@@ -18,9 +18,8 @@
 #include <stdlib.h>
 #include <fnmatch.h>
 
-#include "uffs_tree.h"
 #include "uffs_types.h"
-#include "uffs_disk.h"
+#include "uffs_tree.h"
 #include <errno.h>
 
 uffs_Device dev = {0};
@@ -29,7 +28,7 @@ int uffs_init()
 {
 	fprintf(stdout, "[uffs_init] called\n");
 	uffs_TreeInit(&dev);
-	uffs_BuildTree(&dev, fd);
+	uffs_BuildTree(&dev);
 	fprintf(stdout, "[uffs_init] finished\n");
 	return 0;
 }
@@ -46,7 +45,7 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 
 	memset(stbuf, 0, sizeof(struct stat));
 	if (strcmp(path, "/") == 0) {
-		result = uffs_TreeFindNodeByName(&dev, &node, path, &type,&object_info);
+		result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info);
 	}
 	else {
 		if (result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info) != U_SUCC) {
@@ -54,11 +53,11 @@ int uffs_getattr(const char *path, struct stat *stbuf)
             return -ENOENT;
         }
 	}
-    readPage(dev.fd,node->u.data.block)
+    
     stbuf->st_mode = (object_info.info.attr & FILE_ATTR_DIR ? US_IFDIR : US_IFREG);
+    // TODO: should implement nlink
     stbuf->st_nlink = 2;
     stbuf->st_size = object_info.len;
-
 
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;
@@ -191,7 +190,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     int result;
     
     // 파일 노드를 찾는다.
-    result = uffs_TreeFindNodeByName(&dev, &file_node, path, UFFS_TYPE_FILE);
+    result = uffs_TreeFindNodeByName(&dev, &file_node, path, UFFS_TYPE_FILE, NULL);
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] file node error\n");
@@ -257,7 +256,8 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
     if (data_node == NULL) {
         // 데이터 노드가 없으면 생성
         int data_block_id;
-        if (getFreeBlock(dev.fd, &data_block_id) == U_FAIL) {
+        u16 serial;
+        if (getFreeBlock(dev.fd, &data_block_id, &serial) == U_FAIL) {
             fprintf(stderr, "[uffs_write] no free block available for data\n");
             return -ENOSPC;
         }
@@ -268,7 +268,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
             return -ENOMEM;
         }
 
-        if (initNode(&dev, data_node, data_block_id, UFFS_TYPE_DATA, file_node->u.file.serial) == U_FAIL) {
+        if (initNode(&dev, data_node, data_block_id, UFFS_TYPE_DATA, file_node->u.file.serial, serial) == U_FAIL) {
             fprintf(stderr, "[uffs_write] data node initialization failed\n");
             free(data_node);
             return -EIO;
@@ -382,7 +382,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     TreeNode *file_node = (TreeNode *)malloc(sizeof(TreeNode));
 
     // 파일 노드 초기화
-    if (initNode(&dev, file_node, file_block_id, UFFS_TYPE_FILE, serial) == U_FAIL) {
+    if (initNode(&dev, file_node, file_block_id, UFFS_TYPE_FILE, parent_node->u.dir.serial, serial) == U_FAIL) {
         fprintf(stderr, "[uffs_create] file node initialization failed\n");
         return -EIO;
     }
@@ -423,22 +423,8 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     return 0;
 }
 
-/*
-    --- 디스크 부분 ---
-    1. 안 쓰고 있는 마지막 블록 번호 얻기
-    2. 페이지 하나 얻기(0번)
-    3. 블록에 페이지(미니헤더, 데이터, 태그)채우기 - 완료
-    4. 디스크에 페이지 넣기 
-
-    -- 트리 부분 -- 
-    1. 현재 경로에서 현재 디렉터리 정보 얻기
-    2. 트리 안 현재 디렉터리 하위에 만들 디렉터리 넣기
-    3. 정보 업데이트(링크 수, 업데이트 날짜)
-*/
 int uffs_mkdir(const char *path, mode_t mode) {
     fprintf(stdout, "[uffs_mkdir] called, path: %s\n", path);
-
-    URET result;
     // 트리 부분
     TreeNode* parent_node;
     TreeNode* dir_node;
@@ -446,8 +432,7 @@ int uffs_mkdir(const char *path, mode_t mode) {
     u8 type = UFFS_TYPE_DIR;
 
     // 부모 디렉토리 노드 찾기
-    TreeNode *parent_node = NULL;
-    URET result = uffs_TreeFindParentNodeByName(&dev, &parent_node, path, 0);
+    result = uffs_TreeFindParentNodeByName(&dev, &parent_node, path, 0);
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_mkdir] parent node not found\n");
         return -ENOENT;
@@ -515,7 +500,7 @@ int main(int argc, char *argv[])
 {
     // USB 디바이스 파일 오픈
     dev.fd = open(argv[3], O_RDWR, 0666);
-    if (fd < 0) {
+    if (dev.fd < 0) {
         fprintf(stderr, "[main] strerror: %s\n", strerror(errno));
         return -1;
     }
@@ -525,9 +510,9 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if(diskFormatCheck(fd) == U_FAIL){
+    if(diskFormatCheck(dev.fd) == U_FAIL){
         fprintf(stderr, "[main] disk format check error\n");
-        if(diskFormat(fd)==U_FAIL){
+        if(diskFormat(dev.fd)==U_FAIL){
             fprintf(stderr, "[main] disk format error\n");
             return -1;
         }

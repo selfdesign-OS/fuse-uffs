@@ -1,11 +1,11 @@
 #ifndef _UFFS_DISK_H_
 #define _UFFS_DISK_H_
 
-#include "uffs_types.h"
 #include <time.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include "uffs_device.h"
+#include "uffs_types.h"
+
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
 #define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC
@@ -118,5 +118,4 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
 URET writePage(int fd,int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
 URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info);
 URET getFreeBlock(int fd, int *freeBlockId, u16 *serial);
-URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type);
 #endif

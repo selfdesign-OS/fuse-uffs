@@ -8,6 +8,61 @@
 
 #include <string.h>
 
+static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
+						   int hash, TreeNode *node)
+{
+    fprintf(stdout,"[_InsertToEntry] called\n");
+	node->hash_next = entry[hash];
+	node->hash_prev = EMPTY_NODE;
+    if ((TreeNode*)node->hash_next != EMPTY_NODE) {
+        TreeNode* temp_node = (TreeNode*)node->hash_next;
+        temp_node->hash_prev = (uint64_t) node;
+    }
+    entry[hash] = node;
+    fprintf(stdout,"[_InsertToEntry] finished\n");
+}
+
+static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.file_entry,
+					GET_FILE_HASH(node->u.file.serial),
+					node);
+}
+
+static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.dir_entry,
+					GET_DIR_HASH(node->u.dir.serial),
+					node);
+}
+
+static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node)
+{
+	_InsertToEntry(dev, dev->tree.data_entry,
+					GET_DATA_HASH(node->u.data.parent, node->u.data.serial),
+					node);
+}
+
+void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
+{
+    fprintf(stdout,"[uffs_InsertNodeToTree] called\n");
+    switch (type) {
+    case UFFS_TYPE_DIR:
+        uffs_InsertToDirEntry(dev, node);
+        break;
+    case UFFS_TYPE_FILE:
+        uffs_InsertToFileEntry(dev, node);
+        break;
+    // case UFFS_TYPE_DATA:
+    //     uffs_InsertToDataEntry(dev, node);
+    //     break;
+    default:
+        fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
+        break;
+    }
+    fprintf(stdout,"[uffs_InsertNodeToTree] finished\n");
+}
+
 URET uffs_TreeInit(uffs_Device *dev)
 {
     fprintf(stdout, "[uffs_TreeInit] called\n");
@@ -37,14 +92,14 @@ static u32 GET_CURRENT_TIME() {
     return (u32)now;
 }
 
-URET uffs_BuildTree(uffs_Device *dev, int fd) {
+URET uffs_BuildTree(uffs_Device *dev) {
     fprintf(stdout, "[uffs_BuildTree] called\n");
 
     // 블록 및 페이지 초기화
     for (int block = 1; block < TOTAL_BLOCKS_DEFAULT; block++) {
         uffs_Tag tag = {0};
         uffs_MiniHeader mini_header = {0};
-        readPage(fd,block,0,&mini_header,NULL,&tag);
+        readPage(dev->fd, block, 0, &mini_header, NULL, &tag);
         TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
         memset(node, 0, sizeof(TreeNode));
 
@@ -71,7 +126,7 @@ URET uffs_BuildTree(uffs_Device *dev, int fd) {
 
             int page_id = 0;
             while(page_id < PAGES_PER_BLOCK_DEFAULT){
-                readPage(fd, node->u.file.block, page_id, &mini_header, NULL, &tag);
+                readPage(dev->fd, node->u.file.block, page_id, &mini_header, NULL, &tag);
 
                 if(mini_header.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
                     break;
@@ -210,7 +265,7 @@ UBOOL static uffs_TreeCompareFileName(uffs_Device* dev, char* name, u16 parent, 
     return U_FAIL;
 }
 
-TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent, uffs_ObjectInfo* object_info) {
     fprintf(stdout,"[uffs_TreeFindFileNodeByName] called\n");
     int i;
 	TreeNode *node;
@@ -219,7 +274,7 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
 		node = tree->file_entry[i];
 		while (node != EMPTY_NODE) {
-			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, NULL)) {
+			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info)) {
                 fprintf(stdout,"[uffs_TreeFindFileNodeByName] find node success\n");
                 return node;
 			}
@@ -255,6 +310,22 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
     return NULL;
 }
 
+TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
+    TreeNode *node;
+    struct uffs_TreeSt *tree = &(dev->tree);
+    for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
+		node = tree->data_entry[i];
+		while (node != EMPTY_NODE) {
+			if (node->u.data.parent == parent) {
+                fprintf(stdout,"[uffs_TreeFindDataNodeByParent] finished\n");
+                return node;
+			}
+			node = node->hash_next;
+		}
+	}
+    return NULL;
+}
+
 URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
 
@@ -280,7 +351,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
         printf("[uffs_TreeFindDirNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
         if (tmp_node == NULL) {
             fprintf(stderr,"[uffs_TreeFindDirNodeByNameWithoutParent] error 1\n");
             return U_FAIL;
@@ -321,10 +392,10 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
         printf("[uffs_TreeFindFileNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
             isFile = 1;
         }
         if (tmp_node == NULL) {
@@ -343,61 +414,6 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
 
     fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] finished\n");
     return U_SUCC;
-}
-
-static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
-						   int hash, TreeNode *node)
-{
-    fprintf(stdout,"[_InsertToEntry] called\n");
-	node->hash_next = entry[hash];
-	node->hash_prev = EMPTY_NODE;
-    if ((TreeNode*)node->hash_next != EMPTY_NODE) {
-        TreeNode* temp_node = (TreeNode*)node->hash_next;
-        temp_node->hash_prev = (uint64_t) node;
-    }
-    entry[hash] = node;
-    fprintf(stdout,"[_InsertToEntry] finished\n");
-}
-
-static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node)
-{
-	_InsertToEntry(dev, dev->tree.file_entry,
-					GET_FILE_HASH(node->u.file.serial),
-					node);
-}
-
-static void uffs_InsertToDirEntry(uffs_Device *dev, TreeNode *node)
-{
-	_InsertToEntry(dev, dev->tree.dir_entry,
-					GET_DIR_HASH(node->u.dir.serial),
-					node);
-}
-
-static void uffs_InsertToDataEntry(uffs_Device *dev, TreeNode *node)
-{
-	_InsertToEntry(dev, dev->tree.data_entry,
-					GET_DATA_HASH(node->u.data.parent, node->u.data.serial),
-					node);
-}
-
-void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
-{
-    fprintf(stdout,"[uffs_InsertNodeToTree] called\n");
-    switch (type) {
-    case UFFS_TYPE_DIR:
-        uffs_InsertToDirEntry(dev, node);
-        break;
-    case UFFS_TYPE_FILE:
-        uffs_InsertToFileEntry(dev, node);
-        break;
-    // case UFFS_TYPE_DATA:
-    //     uffs_InsertToDataEntry(dev, node);
-    //     break;
-    default:
-        fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
-        break;
-    }
-    fprintf(stdout,"[uffs_InsertNodeToTree] finished\n");
 }
 
 URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist) {
@@ -427,10 +443,10 @@ URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char
         printf("[uffs_TreeFindParentNodeByName] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
         }
         token = strtok(NULL, delimiter);
         if (tmp_node == NULL) {
@@ -505,6 +521,44 @@ URET initNode(uffs_Device *dev, TreeNode *node, int block_id,u8 type, u16 parent
         node->u.data.len = 0;
         node->u.data.serial = serial;
     } else {
+        return U_FAIL;
+    }
+
+    return U_SUCC;
+}
+
+// 메타데이터 작성
+URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type) {
+
+    uffs_MiniHeader mini_header={0x01,0x00,0xFFFF};
+    uffs_Tag tag={0};
+    if(is_create){
+        file_info->create_time = GET_CURRENT_TIME();
+    }
+    if(type==UFFS_TYPE_DIR){
+        file_info->attr = FILE_ATTR_DIR;
+        tag.s.type = UFFS_TYPE_FILE;
+        tag.s.serial = node->u.dir.serial;
+        tag.s.parent = node->u.dir.parent;
+    }else{
+        file_info->attr = FILE_ATTR_WRITE; // 일반 파일
+        tag.s.type = UFFS_TYPE_FILE;
+        tag.s.serial = node->u.file.serial;
+        tag.s.parent = node->u.file.parent;
+    }
+    file_info->access = GET_CURRENT_TIME();
+    file_info->last_modify = GET_CURRENT_TIME();
+    file_info->name_len = strlen(file_info->name);
+    tag.s.dirty = 1;
+    tag.s.valid = 0;
+    tag.s.block_ts = 0;
+    tag.s.data_len = 0;
+    tag.s.page_id = 0;
+    tag.s.tag_ecc = TAG_ECC_DEFAULT;
+    tag.data_sum = 0;
+    tag.seal_byte = 0;
+
+    if (writePage(dev->fd, node->u.file.block,0,&mini_header,(char*)file_info,&tag)<0) {
         return U_FAIL;
     }
 

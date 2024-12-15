@@ -10,8 +10,8 @@
  * \note one partition corresponding one uffs device.
  */
 typedef struct uffs_DeviceSt {
-	struct uffs_TreeSt				tree;		//!< tree list of block
-	int fd;
+	struct uffs_TreeSt	tree;		//!< tree list of block
+	int					fd;
 } uffs_Device;
 
 #endif

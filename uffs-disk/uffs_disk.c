@@ -103,8 +103,6 @@ URET diskFormat(int fd) {
 
     // write root block
     uffs_FileInfo file_info={0};
-    uffs_MiniHeader mini_header = {0};
-    uffs_Tag tag={0};
 
     setRootFileInfo(&file_info);
     setRootTag(&tag);
@@ -188,42 +186,4 @@ URET getFreeBlock(int fd, int *free_block_id, u16 *serial) {
         }
     }
     return U_FAIL;
-}
-
-// 메타데이터 작성
-URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type) {
-
-    uffs_MiniHeader mini_header={0x01,0x00,0xFFFF};
-    uffs_Tag tag={0};
-    if(is_create){
-        file_info->create_time = GET_CURRENT_TIME();
-    }
-    if(type==UFFS_TYPE_DIR){
-        file_info->attr = FILE_ATTR_DIR;
-        tag.s.type = UFFS_TYPE_FILE;
-        tag.s.serial = node->u.dir.serial;
-        tag.s.parent = node->u.dir.parent;
-    }else{
-        file_info->attr = FILE_ATTR_WRITE; // 일반 파일
-        tag.s.type = UFFS_TYPE_FILE;
-        tag.s.serial = node->u.file.serial;
-        tag.s.parent = node->u.file.parent;
-    }
-    file_info->access = GET_CURRENT_TIME();
-    file_info->last_modify = GET_CURRENT_TIME();
-    file_info->name_len = strlen(file_info->name);
-    tag.s.dirty = 1;
-    tag.s.valid = 0;
-    tag.s.block_ts = 0;
-    tag.s.data_len = 0;
-    tag.s.page_id = 0;
-    tag.s.tag_ecc = TAG_ECC_DEFAULT;
-    tag.data_sum = 0;
-    tag.seal_byte = 0;
-
-    if (writePage(dev->fd, node->u.file.block,0,&mini_header,(char*)file_info,&tag)<0) {
-        return U_FAIL;
-    }
-
-    return U_SUCC;
 }
