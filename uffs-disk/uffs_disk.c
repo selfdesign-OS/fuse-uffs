@@ -191,11 +191,11 @@ URET getFreeBlock(int fd, int *free_block_id, u16 *serial) {
 }
 
 // 메타데이터 작성
-URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_created, u8 type) {
+URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type) {
 
     uffs_MiniHeader mini_header={0x01,0x00,0xFFFF};
     uffs_Tag tag={0};
-    if(is_created){
+    if(is_create){
         file_info->create_time = GET_CURRENT_TIME();
     }
     if(type==UFFS_TYPE_DIR){

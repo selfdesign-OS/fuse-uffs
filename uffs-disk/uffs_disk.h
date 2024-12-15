@@ -118,5 +118,5 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
 URET writePage(int fd,int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
 URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info);
 URET getFreeBlock(int fd, int *freeBlockId, u16 *serial);
-URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_created, u8 type);
+URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type);
 #endif

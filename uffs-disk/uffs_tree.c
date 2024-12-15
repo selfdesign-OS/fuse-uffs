@@ -46,6 +46,7 @@ URET uffs_BuildTree(uffs_Device *dev, int fd) {
         uffs_MiniHeader mini_header = {0};
         readPage(fd,block,0,&mini_header,NULL,&tag);
         TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
+        memset(node, 0, sizeof(TreeNode));
 
         switch (tag.s.type) {
 		case UFFS_TYPE_DIR:
@@ -67,7 +68,17 @@ URET uffs_BuildTree(uffs_Device *dev, int fd) {
 			node->u.data.parent = tag.s.parent;
 			node->u.data.serial = tag.s.serial;
 			node->u.data.block = block;
-            node->u.data.len = tag.s.data_len;
+
+            int page_id = 0;
+            while(page_id < PAGES_PER_BLOCK_DEFAULT){
+                readPage(fd, node->u.file.block, page_id, &mini_header, NULL, &tag);
+
+                if(mini_header.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
+                    break;
+
+                node->u.data.len+=tag.s.data_len;
+                page_id++;
+            }
             uffs_InsertToDataEntry(dev, node);
 			break;
 		default:
@@ -179,20 +190,27 @@ TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 UBOOL static uffs_TreeCompareFileName(uffs_Device* dev, char* name, u16 parent, uffs_ObjectInfo* object_info){
+
+    uffs_ObjectInfo temp_objectInfo = {0};
+
     for(int i =1;i<TOTAL_BLOCKS_DEFAULT;i++){
         uffs_Tag tag={0};
-        readPage(dev->fd,i,0,NULL,(char*)&object_info->info,&tag);
-        if(tag.s.parent == parent && strcmp(object_info->info.name,name)){
+        readPage(dev->fd,i,0,NULL,(char*)&temp_objectInfo.info,&tag);
+        if(tag.s.parent == parent && strcmp(temp_objectInfo.info.name,name)){
             // TODO: set len
-            object_info->len = 0;
-            object_info->serial = tag.s.serial;
+            temp_objectInfo.len = 0;
+            temp_objectInfo.serial = tag.s.serial;
+
+            if(object_info != NULL){
+                *object_info = temp_objectInfo;
+            }
             return U_TRUE;
         }
     }
     return U_FAIL;
 }
 
-TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent, uffs_ObjectInfo* object_info) {
+TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 len, u16 parent) {
     fprintf(stdout,"[uffs_TreeFindFileNodeByName] called\n");
     int i;
 	TreeNode *node;
@@ -201,7 +219,7 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
 		node = tree->file_entry[i];
 		while (node != EMPTY_NODE) {
-			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info)) {
+			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, NULL)) {
                 fprintf(stdout,"[uffs_TreeFindFileNodeByName] find node success\n");
                 return node;
 			}
@@ -237,23 +255,7 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
     return NULL;
 }
 
-TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
-    TreeNode *node;
-    struct uffs_TreeSt *tree = &(dev->tree);
-    for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
-		node = tree->data_entry[i];
-		while (node != EMPTY_NODE) {
-			if (node->u.data.parent == parent) {
-                fprintf(stdout,"[uffs_TreeFindDataNodeByParent] finished\n");
-                return node;
-			}
-			node = node->hash_next;
-		}
-	}
-    return NULL;
-}
-
-URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info) {
+URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
 
     char *token;
@@ -278,7 +280,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
         printf("[uffs_TreeFindDirNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         if (tmp_node == NULL) {
             fprintf(stderr,"[uffs_TreeFindDirNodeByNameWithoutParent] error 1\n");
             return U_FAIL;
@@ -294,7 +296,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
     return U_SUCC;
 }
 
-URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info) {
+URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
     fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] called\n");
 
     char *token;
@@ -319,10 +321,10 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
         printf("[uffs_TreeFindFileNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
             isFile = 1;
         }
         if (tmp_node == NULL) {
@@ -388,9 +390,9 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
     case UFFS_TYPE_FILE:
         uffs_InsertToFileEntry(dev, node);
         break;
-    case UFFS_TYPE_DATA:
-        uffs_InsertToDataEntry(dev, node);
-        break;
+    // case UFFS_TYPE_DATA:
+    //     uffs_InsertToDataEntry(dev, node);
+    //     break;
     default:
         fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
         break;
@@ -479,6 +481,11 @@ int parsePath(const char *path, char *nameBuffer, int maxNameLength) {
 
 // 노드 초기화
 URET initNode(uffs_Device *dev, TreeNode *node, int block_id,u8 type, u16 parent_serial, u16 serial) {
+
+    if(block_id == -1){
+        return U_FAIL;
+    }
+
     memset(node,0,sizeof(TreeNode));
 
     if (type == UFFS_TYPE_FILE) {

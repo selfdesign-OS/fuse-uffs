@@ -75,7 +75,6 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     char *path_copy = NULL;
     u16 parent_serial;
     u8 type = UFFS_TYPE_DIR;
-	uffs_ObjectInfo object_info ={0};
 
     // path를 strtok에서 안전하게 사용하기 위해 복사
     path_copy = strdup(path);
@@ -85,7 +84,7 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     // 해당 path에 대응하는 node 찾기
-    result = uffs_TreeFindNodeByName(&dev, &node, path_copy, &type, &object_info);
+    result = uffs_TreeFindNodeByName(&dev, &node, path_copy, &type, NULL);
     free(path_copy); // TreeFindNodeByName 호출 후 복사본은 더 이상 필요 없음
     path_copy = NULL;
     if (result != U_SUCC || node == NULL) {
@@ -151,14 +150,14 @@ int uffs_opendir(const char *path, struct fuse_file_info *fu)
 {
     fprintf(stdout, "[uffs_opendir] called\n");
     TreeNode* node;
-    uffs_ObjectInfo object_info = {0};
-	int result;
+    
+	URET result;
 	if (strcmp("/", path) == 0) {
         fprintf(stdout, "[uffs_opendir] finished\n");
 		return 0;
 	}
 
-	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path, &object_info);
+	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path);
 
 	if (result == U_SUCC) {
         fprintf(stdout, "[uffs_opendir] finished\n");
@@ -172,9 +171,8 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
 {
     fprintf(stdout, "[uffs_open] called\n");
     TreeNode* node;
-    int result;
-	uffs_ObjectInfo object_info ={0};
-    result = uffs_TreeFindNodeByName(&dev, &node, path, NULL, &object_info);
+    URET result;
+    result = uffs_TreeFindNodeByName(&dev, &node, path, NULL, NULL);
 
 	if (result == U_SUCC){
         fprintf(stdout, "[uffs_open] finished\n");
@@ -184,43 +182,42 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
 	return -ENOENT;
 }
 
-/*
-    1. 경로 이름을 통해서 노드를 찾아온다.
-    2. 노드 안 정보를 이용해서 블록 안 페이지에 있는 데이터를 buf에 넣는다.
-    3. 읽은 크기를 반환한다.
-*/
 int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
     fprintf(stdout, "[uffs_read] called\n");
-    TreeNode* node;
+    TreeNode* file_node;
+    TreeNode* data_node;
     int result;
-
+    
     // 파일 노드를 찾는다.
-    result = uffs_TreeFindNodeByName(&dev, &node, path, UFFS_TYPE_FILE);
-    //result = uffs_TreeFindFileNodeByNameWithoutParent(&dev, &node, path);
+    result = uffs_TreeFindNodeByName(&dev, &file_node, path, UFFS_TYPE_FILE);
 
     if (result == U_FAIL) {
-        fprintf(stderr, "[uffs_read] error\n");
+        fprintf(stderr, "[uffs_read] file node error\n");
         return -ENOENT;	
     } 
 
-    if (size > node->info.len) {
-        size = node->info.len;
-    }
     
-    // 파일 노드에서 페이지 읽어서 보내기(1파일, 1블록, 여러 페이지)
-    // 가져온 파일 노드의 블록 안에서 여러 페이지들을 버퍼 안에 차례대로 넣는다.
-    // 이때 페이지는 미니헤더 보고 사용중이지 않는 곳까지 읽게 한다.
+    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
+
+    if(data_node == NULL){
+        fprintf(stderr, "[uffs_read] data node error\n");
+        return -ENOENT;
+    }
+
+    if (size > data_node->u.data.len) {
+        size = data_node->u.data.len;
+    }
+
     uffs_MiniHeader miniHeader = {0};
-    char data[PAGE_DATA_SIZE_DEFAULT] = {0};
-    uffs_Tag tag = {0};
+    char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
     int page_id = 0;
     int bytes_read = 0; // 현재까지 읽은 바이트 수
     int bytes_to_read = size; // 읽어야할 바이트 수
     
     while(bytes_to_read > 0){
-        readPage(dev.fd, node->u.file.block, page_id, &miniHeader, data, &tag);
+        readPage(dev.fd, data_node->u.file.block, page_id, &miniHeader, data_buf, NULL);
 
         if(miniHeader.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
             break;
@@ -229,11 +226,13 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
         int bytes_from_page = bytes_to_read < PAGE_DATA_SIZE_DEFAULT ? bytes_from_page : PAGE_DATA_SIZE_DEFAULT;
 
         // 데이터를 버퍼로 복사
-        memcpy(buf + bytes_read, data, bytes_from_page);         
+        memcpy(buf + bytes_read, data_buf, bytes_from_page);         
 
         bytes_read += bytes_from_page;
         bytes_to_read -= bytes_from_page;
         page_id++;
+        if(page_id>=PAGES_PER_BLOCK_DEFAULT)
+            break;
     }
     
     fprintf(stdout, "[uffs_read] finished\n");
@@ -353,7 +352,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // 메타데이터 갱신
     uffs_FileInfo file_info = {0};
-    updateFileInfoPage(&dev, file_node, &file_info, 0);
+    updateFileInfoPage(&dev, file_node, &file_info, 0, UFFS_TYPE_FILE);
 
     fprintf(stdout, "[uffs_write] finished\n");
     return written;
@@ -391,11 +390,28 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     // 메타데이터 생성 및 작성
     uffs_FileInfo file_info = {0};
 
-    // 이름 추출
-    strncpy(file_info.name, strrchr(path, '/') ? strrchr(path, '/') + 1 : path, MAX_FILENAME_LENGTH);
-    fprintf(stderr, "[uffs_create] %s\n",file_info.name);
+    // 파일 이름 추출
+    char file_name[MAX_FILENAME_LENGTH]; // 크기가 충분한 버퍼로 선언
+    if (strrchr(path, '/')) {
+        strncpy(file_name, strrchr(path, '/') + 1, MAX_FILENAME_LENGTH - 1); // 최대 길이만큼 복사
+    } else {
+        strncpy(file_name, path, MAX_FILENAME_LENGTH - 1);
+    }
+    file_name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
 
-    if (updateFileInfoPage(&dev, file_node, &file_info) == U_FAIL) {
+    // 길이 검사
+    if (strlen(file_name) > MAX_FILENAME_LENGTH - 1) {
+        return -ENOENT;
+    }
+
+    // 파일 정보에 이름 복사
+    strncpy(file_info.name, file_name, MAX_FILENAME_LENGTH - 1);
+    file_info.name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
+
+    fprintf(stdout, "[uffs_create] fileName: %s\n", file_info.name);
+
+
+    if (updateFileInfoPage(&dev, file_node, &file_info, 1, UFFS_TYPE_FILE) == U_FAIL) {
         fprintf(stderr, "[uffs_create] file metadata write error\n");
         return -EIO;
     }
@@ -412,7 +428,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     1. 안 쓰고 있는 마지막 블록 번호 얻기
     2. 페이지 하나 얻기(0번)
     3. 블록에 페이지(미니헤더, 데이터, 태그)채우기 - 완료
-    4. 디스크에 페이지 넣기 - 완료
+    4. 디스크에 페이지 넣기 
 
     -- 트리 부분 -- 
     1. 현재 경로에서 현재 디렉터리 정보 얻기
@@ -422,59 +438,62 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
 int uffs_mkdir(const char *path, mode_t mode) {
     fprintf(stdout, "[uffs_mkdir] called, path: %s\n", path);
 
+    URET result;
     // 트리 부분
-    TreeNode* node;
+    TreeNode* parent_node;
+    TreeNode* dir_node;
 	URET result;
     u8 type = UFFS_TYPE_DIR;
-	uffs_ObjectInfo object_info ={0};
 
-    result = uffs_TreeFindNodeByName(&dev, &node, path, &type,&object_info);
+    // 부모 디렉토리 노드 찾기
+    TreeNode *parent_node = NULL;
+    URET result = uffs_TreeFindParentNodeByName(&dev, &parent_node, path, 0);
+    if (result == U_FAIL) {
+        fprintf(stderr, "[uffs_mkdir] parent node not found\n");
+        return -ENOENT;
+    }
 
     // 디스크 부분
     uffs_MiniHeader miniHeader = {0};
     uffs_Tag tag = {0};
-    uffs_FileInfo fileInfo = {0};
+    uffs_FileInfo dir_file_info = {0};
     int new_block_id = -1;
+    u16 serial;
 
-    // 미사용중인 마지막 블록 번호 얻기
-    for(int block = 1; i < TOTAL_BLOCKS_DEFAULT; block++){
-        readPage(dev.fd, block, 0, &miniHeader, (char*)&fileInfo, &tag);
-        if(miniHeader.status != 0xFF){
-            new_block_id = block;
-            break;
-        }
+    result = getFreeBlock(dev.fd, &new_block_id, &serial);
+    if(result == U_FAIL){
+        return -ENOENT;
     }
 
-    // 태그 설정
-    tag.s.dirty = 1;
-    tag.s.valid = 0;
-    tag.s.type = UFFS_TYPE_DIR; 
-    tag.s.block_ts = GET_CURRENT_TIME();
-    tag.s.page_id = 0;
-    tag.s.tag_ecc = TAG_ECC_DEFAULT;
+    dir_node = (TreeNode*)malloc(sizeof(TreeNode));
+    initNode(&dev, &dir_node, new_block_id, UFFS_TYPE_DIR, parent_node->u.dir.serial, serial);
+    
+    // 파일 이름 추출
+    char dir_name[MAX_FILENAME_LENGTH]; // 크기가 충분한 버퍼로 선언
+    if (strrchr(path, '/')) {
+        strncpy(dir_name, strrchr(path, '/') + 1, MAX_FILENAME_LENGTH - 1); // 최대 길이만큼 복사
+    } else {
+        strncpy(dir_name, path, MAX_FILENAME_LENGTH - 1);
+    }
+    dir_name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
 
-    tag.data_sum = 0;
-    tag.seal_byte = 0;
-
-    // 디렉터리 데이터 설정
-    file_info->access = GET_CURRENT_TIME();
-    file_info->attr = FILE_ATTR_DIR;
-    file_info->create_time = GET_CURRENT_TIME();
-    file_info->last_modify = GET_CURRENT_TIME();
-    strcpy(file_info->name,"/"); // TODO: 디렉터리 이름 가져오기
-    file_info->name_len = strlen(file_info->name);
-    file_info->reserved = 0x00;
-
-    // 미니 헤더 설정
-    miniHeader->status = 0x01; // 페이지 상태 (예: 유효한 페이지)
-
-
-    // 디스크에 쓰기
-    if(writePage(dev.fd, new_block_id, 0, &miniHeader, (char*)&fileInfo, &tag) < 0){
-        fprintf(stderr, "[uffs_mkdir] Failed to write block %d, page %d\n", block, page);
-        return EIO;
+    // 길이 검사
+    if (strlen(dir_name) > MAX_FILENAME_LENGTH - 1) {
+        return -ENOENT;
     }
 
+    // 파일 정보에 이름 복사
+    strncpy(dir_file_info.name, dir_name, MAX_FILENAME_LENGTH - 1);
+    dir_file_info.name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
+
+    fprintf(stdout, "[uffs_mkdir] fileName: %s\n", dir_file_info.name);
+    
+    // 디스크 업데이트
+    if(updateFileInfoPage(&dev, dir_node, &dir_file_info, 1, UFFS_TYPE_DIR) == U_FAIL){
+        return -ENOENT;
+    }
+    // 트리에 노드 추가
+    uffs_InsertNodeToTree(&dev, UFFS_TYPE_DIR, dir_node);
 
     fprintf(stdout, "[uffs_mkdir] finished\n");
     return 0;
