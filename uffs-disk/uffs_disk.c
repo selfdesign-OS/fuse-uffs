@@ -32,8 +32,6 @@ static void setRootTag(uffs_Tag *tag) {
     tag->s.parent = ROOT_DIR_SERIAL; // 루트 디렉토리는 부모 없음
     tag->s.page_id = 0;              // 첫 번째 페이지
     tag->s.tag_ecc = TAG_ECC_DEFAULT; // 태그 ECC 기본값
-    
-    return 0; // 성공
 }
 static void setRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
 
@@ -41,8 +39,6 @@ static void setRootMiniHeader(struct uffs_MiniHeaderSt *miniHeader) {
     miniHeader->status = 0x01; // 페이지 상태 (예: 유효한 페이지)
     miniHeader->reserved = 0x00; // 예약된 값
     miniHeader->crc = 0xFFFF; // 초기 CRC 값
-
-    return 0;
 }
 
 static void setRootFileInfo(uffs_FileInfo *file_info){
@@ -53,7 +49,6 @@ static void setRootFileInfo(uffs_FileInfo *file_info){
     strcpy(file_info->name,"/");
     file_info->name_len = 1;
     file_info->reserved = 0x00;
-    return 0;
 }
 
 URET diskFormat(int fd) {

@@ -53,9 +53,9 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node)
     case UFFS_TYPE_FILE:
         uffs_InsertToFileEntry(dev, node);
         break;
-    // case UFFS_TYPE_DATA:
-    //     uffs_InsertToDataEntry(dev, node);
-    //     break;
+    case UFFS_TYPE_DATA:
+        uffs_InsertToDataEntry(dev, node);
+        break;
     default:
         fprintf(stderr, "[uffs_InsertNodeToTree] node type error\n");
         break;
@@ -245,13 +245,13 @@ TreeNode * uffs_TreeFindDirNodeWithParent(uffs_Device *dev, u16 parent) {
 }
 
 UBOOL static uffs_TreeCompareFileName(uffs_Device* dev, char* name, u16 parent, uffs_ObjectInfo* object_info){
-
+    fprintf(stdout,"[uffs_TreeCompareFileName] called\n");
     uffs_ObjectInfo temp_objectInfo = {0};
 
     for(int i =1;i<TOTAL_BLOCKS_DEFAULT;i++){
         uffs_Tag tag={0};
         readPage(dev->fd,i,0,NULL,(char*)&temp_objectInfo.info,&tag);
-        if(tag.s.parent == parent && strcmp(temp_objectInfo.info.name,name)){
+        if(tag.s.parent == parent && strcmp(temp_objectInfo.info.name,name) == 0){
             // TODO: set len
             temp_objectInfo.len = 0;
             temp_objectInfo.serial = tag.s.serial;
@@ -259,9 +259,11 @@ UBOOL static uffs_TreeCompareFileName(uffs_Device* dev, char* name, u16 parent, 
             if(object_info != NULL){
                 *object_info = temp_objectInfo;
             }
+            fprintf(stdout,"[uffs_TreeCompareFileName] finished\n");
             return U_TRUE;
         }
     }
+    fprintf(stderr,"[uffs_TreeCompareFileName] failed\n");
     return U_FAIL;
 }
 
@@ -274,7 +276,7 @@ TreeNode * uffs_TreeFindFileNodeByName(uffs_Device *dev, const char *name, u32 l
 	for (i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
 		node = tree->file_entry[i];
 		while (node != EMPTY_NODE) {
-			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info)) {
+			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info) == U_TRUE) {
                 fprintf(stdout,"[uffs_TreeFindFileNodeByName] find node success\n");
                 return node;
 			}
@@ -294,7 +296,7 @@ TreeNode * uffs_TreeFindDirNodeByName(uffs_Device *dev, const char *name, u32 le
 	for (i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
 		node = tree->dir_entry[i];
 		while (node != EMPTY_NODE) {
-			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info)) {
+			if (node->u.dir.parent == parent && uffs_TreeCompareFileName(dev, name, parent, object_info) == U_TRUE) {
                 fprintf(stdout,"[uffs_TreeFindDirNodeByName] finished\n");
                 return node;
 			}
@@ -311,7 +313,8 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
 }
 
 TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
-    TreeNode *node;
+    fprintf(stdout,"[uffs_TreeFindDataNodeByParent] started\n");
+    TreeNode *node = (TreeNode *)malloc(sizeof(TreeNode));
     struct uffs_TreeSt *tree = &(dev->tree);
     for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
 		node = tree->data_entry[i];
@@ -323,6 +326,7 @@ TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
 			node = node->hash_next;
 		}
 	}
+    fprintf(stdout,"[uffs_TreeFindDataNodeByParent] failed\n");
     return NULL;
 }
 

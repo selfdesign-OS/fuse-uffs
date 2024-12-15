@@ -451,7 +451,7 @@ int uffs_mkdir(const char *path, mode_t mode) {
     }
 
     dir_node = (TreeNode*)malloc(sizeof(TreeNode));
-    initNode(&dev, &dir_node, new_block_id, UFFS_TYPE_DIR, parent_node->u.dir.serial, serial);
+    initNode(&dev, dir_node, new_block_id, UFFS_TYPE_DIR, parent_node->u.dir.serial, serial);
     
     // 파일 이름 추출
     char dir_name[MAX_FILENAME_LENGTH]; // 크기가 충분한 버퍼로 선언
