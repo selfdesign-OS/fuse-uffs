@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <sys/types.h>
-
+#include "uffs_device.h"
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
 #define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC
@@ -49,7 +49,6 @@ struct uffs_TagStoreSt {
 	u32 block_ts:2;		//!< time stamp of block;
 	u32 data_len:12;	//!< length of page data
 	u32 serial:14;		//!< serial number
-
 	u32 parent:10;		//!< parent's serial number
 	u32 page_id:UFFS_TAG_PAGE_ID_SIZE_BITS;		//!< page id
 #if UFFS_TAG_RESERVED_BITS != 0
@@ -113,11 +112,11 @@ typedef struct uffs_ObjectInfoSt {
     u16 serial;             //!< object serial num
 } uffs_ObjectInfo;
 
-typedef struct data_DiskSt {
-} data_Disk;
-
 URET diskFormatCheck(int fd);
 URET diskFormat(int fd);
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
 URET writePage(int fd,int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
+URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info);
+URET getFreeBlock(int fd, int *freeBlockId, u16 *serial);
+URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_created, u8 type);
 #endif
