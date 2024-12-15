@@ -228,8 +228,6 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 	memcpy(block->data, buf, size);
     node->info.len = size;
     block->tag.data_len = node->info.len;
-
-
     return size;
 }
 
