@@ -89,8 +89,8 @@ void uffs_InsertNodeToTree(uffs_Device *dev, u8 type, TreeNode *node);
 #define DIR 1
 #define ROOT_SERIAL 0
 URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name, u8 *type, uffs_ObjectInfo* object_info);
-URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
-URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name);
+URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info);
+URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info);
 URET initNode(uffs_Device *dev,TreeNode *node, data_Block *block, const char *path, u8 type);
 URET uffs_TreeFindParentNodeByName(uffs_Device *dev, TreeNode **node, const char *name, int isNodeExist);
 

@@ -237,7 +237,7 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
     return NULL;
 }
 
-URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
+URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info) {
     fprintf(stdout, "[uffs_TreeFindDirNodeByNameWithoutParent] called\n");
 
     char *token;
@@ -262,7 +262,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
         printf("[uffs_TreeFindDirNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
         if (tmp_node == NULL) {
             fprintf(stderr,"[uffs_TreeFindDirNodeByNameWithoutParent] error 1\n");
             return U_FAIL;
@@ -278,7 +278,7 @@ URET uffs_TreeFindDirNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, 
     return U_SUCC;
 }
 
-URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name) {
+URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node, const char *name, uffs_ObjectInfo* object_info) {
     fprintf(stdout, "[uffs_TreeFindFileNodeByNameWithoutParent] called\n");
 
     char *token;
@@ -303,10 +303,10 @@ URET uffs_TreeFindFileNodeByNameWithoutParent(uffs_Device *dev, TreeNode **node,
         printf("[uffs_TreeFindFileNodeByNameWithoutParent] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial);
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
             isFile = 1;
         }
         if (tmp_node == NULL) {

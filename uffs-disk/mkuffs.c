@@ -73,6 +73,8 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     TreeNode *node = NULL;
     char *path_copy = NULL;
     u16 parent_serial;
+    u8 type = UFFS_TYPE_DIR;
+	uffs_ObjectInfo object_info ={0};
 
     // path를 strtok에서 안전하게 사용하기 위해 복사
     path_copy = strdup(path);
@@ -82,21 +84,17 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     // 해당 path에 대응하는 node 찾기
-    result = uffs_TreeFindNodeByName(&dev, &node, path_copy, NULL);
+    result = uffs_TreeFindNodeByName(&dev, &node, path_copy, &type, &object_info);
     free(path_copy); // TreeFindNodeByName 호출 후 복사본은 더 이상 필요 없음
     path_copy = NULL;
-
     if (result != U_SUCC || node == NULL) {
         fprintf(stderr, "[uffs_readdir] node not found for path: %s\n", path);
         return -ENOENT;
     }
-
-    // TODO: 호출한 path의 node가 디렉토리인지 확인
-    // mode_t mode = S_IFDIR | node->info.mode;
-    // if (!S_ISDIR(mode)) {
-    //     fprintf(stderr, "[uffs_readdir] not a directory: %s\n", path);
-    //     return -ENOTDIR;
-    // }
+    if (type != UFFS_TYPE_DIR) {
+        fprintf(stderr, "[uffs_readdir] this is not dir node: %s\n", path);
+        return -ENOTDIR; // 디렉토리가 아님을 나타냄
+    }
 
     // 현재 디렉토리의 serial 번호
     parent_serial = node->u.dir.serial;
@@ -115,15 +113,17 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
     }
 
     // 해당 디렉토리 하위에 존재하는 디렉토리 엔트리 출력
+    uffs_FileInfo file_info = {0};
     for (int i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
         TreeNode *dnode = dev.tree.dir_entry[i];
         while (dnode != EMPTY_NODE) {
             if (dnode->u.dir.parent == parent_serial) {
                 // '.'와 '..'를 제외한 실제 하위 디렉토리 엔트리 이름 추가
-                if (strcmp(dnode->info.name, "/") != 0) { 
+                if (getFileInfoBySerial(dev.fd, dnode->u.dir.serial, &file_info) == U_SUCC &&
+                strcmp(file_info.name, "/")) { 
                     // 루트 노드 이름 '/'는 하위에 직접 표시하지 않음 
                     // 필요에 따라 이 조건은 제거할 수 있음
-                    filler(buf, dnode->info.name, NULL, 0);
+                    filler(buf, file_info.name, NULL, 0);
                 }
             }
             dnode = dnode->hash_next;
@@ -135,8 +135,8 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
         TreeNode *fnode = dev.tree.file_entry[i];
         while (fnode != EMPTY_NODE) {
             if (fnode->u.file.parent == parent_serial) {
-                // 파일 이름 출력
-                filler(buf, fnode->info.name, NULL, 0);
+                if (getFileInfoBySerial(dev.fd, fnode->u.file.serial, &file_info) == U_SUCC)
+                    filler(buf, file_info.name, NULL, 0);
             }
             fnode = fnode->hash_next;
         }
@@ -156,7 +156,7 @@ int uffs_opendir(const char *path, struct fuse_file_info *fu)
 		return 0;
 	}
 
-	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path);
+	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path); // TODO: 이거 수정
 
 	if (result == U_SUCC) {
         fprintf(stdout, "[uffs_opendir] finished\n");
@@ -171,7 +171,8 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
     fprintf(stdout, "[uffs_open] called\n");
     TreeNode* node;
     int result;
-    result = uffs_TreeFindNodeByName(&dev, &node, path, NULL);
+	uffs_ObjectInfo object_info ={0};
+    result = uffs_TreeFindNodeByName(&dev, &node, path, NULL, &object_info);
 
 	if (result == U_SUCC){
         fprintf(stdout, "[uffs_open] finished\n");

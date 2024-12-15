@@ -160,4 +160,13 @@ URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, c
     fprintf(stdout, "[writePage] writePage finished.\n");
     return U_SUCC;
 }
+
+URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info) {
+    for (int block = 0; block < TOTAL_BLOCKS_DEFAULT; block++) {
+        if (readPage(fd, block, 0, NULL, (char *)file_info, NULL) == U_SUCC) {
+            return U_SUCC;
+        }
+    }
+    return U_FAIL;
+}
     
