@@ -6,7 +6,7 @@ URET diskFormatCheck(int fd){
 
     readPage(fd,0,0,NULL,magic,NULL);
 
-    if (memcmp(magic, "UFFS",4) == 0) {
+    if (memcmp(magic, MAGIC,4) == 0) {
         fprintf(stdout,"[diskFormatCheck] finished\n");
         return U_SUCC;
     }
@@ -94,7 +94,7 @@ URET diskFormat(int fd) {
     uffs_Tag tag={0};
 
     memset(magic, 0, sizeof(magic));
-    memcpy(magic, "UFFS", 4);
+    memcpy(magic, MAGIC, 4);
 
     if (writePage(fd,0,0,&mini_header,magic,&tag) < 0) {
         fprintf(stderr, "[diskFormat] write magic number error\n");    
@@ -120,7 +120,7 @@ URET diskFormat(int fd) {
 
 
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
-    fprintf(stdout, "[readPage] readPage called.\n");
+    // fprintf(stdout, "[readPage] readPage called.\n");
     char page_buf[PAGE_SIZE_DEFAULT];
     if(pread(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
         fprintf(stderr, "[readPage] readPage error.\n");
@@ -136,12 +136,12 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
     if(tag!=NULL)
         memcpy(tag, page_buf+offset,sizeof(uffs_Tag));
 
-    fprintf(stdout, "[readPage] readPage finished.\n");
+    // fprintf(stdout, "[readPage] readPage finished.\n");
     return U_SUCC;
 }
 
 URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
-    fprintf(stdout, "[writePage] writePage called.\n");
+    // fprintf(stdout, "[writePage] writePage called.\n");
     char page_buf[PAGE_SIZE_DEFAULT];
 
     off_t offset = 0;
@@ -155,7 +155,7 @@ URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, c
         fprintf(stderr, "[writePage] writePage error.\n");
         return U_FAIL;
     }
-    fprintf(stdout, "[writePage] writePage finished.\n");
+    // fprintf(stdout, "[writePage] writePage finished.\n");
     return U_SUCC;
 }
 

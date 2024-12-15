@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include "uffs_types.h"
 
+#define MAGIC "FUSE" // must 4 char
+
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
 #define UFFS_ECC_SOFT		1	//!< UFFS calculate the ECC

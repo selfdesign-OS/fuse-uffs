@@ -11,7 +11,7 @@
 static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
 						   int hash, TreeNode *node)
 {
-    fprintf(stdout,"[_InsertToEntry] called\n");
+    // fprintf(stdout,"[_InsertToEntry] called\n");
 	node->hash_next = entry[hash];
 	node->hash_prev = EMPTY_NODE;
     if ((TreeNode*)node->hash_next != EMPTY_NODE) {
@@ -19,7 +19,7 @@ static void _InsertToEntry(uffs_Device *dev, uint64_t *entry,
         temp_node->hash_prev = (uint64_t) node;
     }
     entry[hash] = node;
-    fprintf(stdout,"[_InsertToEntry] finished\n");
+    // fprintf(stdout,"[_InsertToEntry] finished\n");
 }
 
 static void uffs_InsertToFileEntry(uffs_Device *dev, TreeNode *node)
