@@ -124,12 +124,13 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     // 해당 디렉토리 하위에 존재하는 디렉토리 엔트리 출력
     uffs_FileInfo file_info = {0};
+    u32 dir_out_len;
     for (int i = 0; i < DIR_NODE_ENTRY_LEN; i++) {
         TreeNode *dnode = dev.tree.dir_entry[i];
         while (dnode != EMPTY_NODE) {
             if (dnode->u.dir.parent == parent_serial) {
                 // '.'와 '..'를 제외한 실제 하위 디렉토리 엔트리 이름 추가
-                if (getFileInfoBySerial(dev.fd, dnode->u.dir.serial, &file_info) == U_SUCC &&
+                if (getFileInfoBySerial(dev.fd, dnode->u.dir.serial, &file_info,&dir_out_len) == U_SUCC &&
                 strcmp(file_info.name, "/") != 0) { 
                     // 루트 노드 이름 '/'는 하위에 직접 표시하지 않음 
                     // 필요에 따라 이 조건은 제거할 수 있음
@@ -139,13 +140,13 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
             dnode = dnode->hash_next;
         }
     }
-
+    u32 file_out_len;
     // 해당 디렉토리 하위에 존재하는 파일 엔트리 출력
     for (int i = 0; i < FILE_NODE_ENTRY_LEN; i++) {
         TreeNode *fnode = dev.tree.file_entry[i];
         while (fnode != EMPTY_NODE) {
             if (fnode->u.file.parent == parent_serial) {
-                if (getFileInfoBySerial(dev.fd, fnode->u.file.serial, &file_info) == U_SUCC)
+                if (getFileInfoBySerial(dev.fd, fnode->u.file.serial, &file_info, &file_out_len) == U_SUCC)
                     filler(buf, file_info.name, NULL, 0);
             }
             fnode = fnode->hash_next;
@@ -191,63 +192,80 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
     fprintf(stderr, "[uffs_open] error\n");
 	return -ENOENT;
 }
-
 int uffs_read(const char *path, char *buf, size_t size, off_t offset,
-		      struct fuse_file_info *fi)
+              struct fuse_file_info *fi)
 {
     fprintf(stdout, "[uffs_read] called\n");
     TreeNode* file_node;
     TreeNode* data_node;
     int result;
-    
+
     // 파일 노드를 찾는다.
-    result = uffs_TreeFindNodeByName(&dev, &file_node, path, UFFS_TYPE_FILE, NULL);
+    result = uffs_TreeFindNodeByName(&dev, &file_node, path, NULL, NULL);
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] file node error\n");
         return -ENOENT;	
     } 
 
-    
     data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-
-    if(data_node == NULL){
+    if (data_node == NULL) {
         fprintf(stderr, "[uffs_read] data node error\n");
         return -ENOENT;
     }
 
-    if (size > data_node->u.data.len) {
-        size = data_node->u.data.len;
+    // 파일 길이보다 offset이 크면 읽을 것 없음
+    if (offset >= data_node->u.data.len) {
+        fprintf(stdout, "[uffs_read] offset beyond file length\n");
+        return 0;
     }
 
-    uffs_MiniHeader miniHeader = {0};
+    // 읽어야 할 크기가 파일 남은 길이를 초과하면 조정
+    if (size > data_node->u.data.len - offset) {
+        size = data_node->u.data.len - offset;
+    }
+
+    // offset에 따라 시작 페이지/오프셋 계산
+    int start_page = offset / PAGE_DATA_SIZE_DEFAULT;
+    int start_offset = offset % PAGE_DATA_SIZE_DEFAULT;
+
+    int page_id = start_page;
+    size_t bytes_to_read = size;
+    size_t bytes_read = 0;
+    uffs_MiniHeader miniHeader;
     char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-    int page_id = 0;
-    int bytes_read = 0; // 현재까지 읽은 바이트 수
-    int bytes_to_read = size; // 읽어야할 바이트 수
-    
-    while(bytes_to_read > 0){
-        readPage(dev.fd, data_node->u.file.block, page_id, &miniHeader, data_buf, NULL);
 
-        if(miniHeader.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
+    while (bytes_to_read > 0 && page_id < PAGES_PER_BLOCK_DEFAULT) {
+        // 해당 페이지 읽기
+        if (readPage(dev.fd, data_node->u.data.block, page_id, &miniHeader, data_buf, NULL) != U_SUCC) {
+            fprintf(stderr, "[uffs_read] page read error at page %d\n", page_id);
+            break; // 읽을 페이지 없으면 종료
+        }
+
+        if (miniHeader.status == 0xFF) {
+            // 더 이상 유효한 페이지 없음
             break;
+        }
+        fprintf(stdout, "[uffs_read] data is %s\n", data_buf);
+        // 이번 페이지에서 읽을 수 있는 바이트 계산
+        int page_avail = PAGE_DATA_SIZE_DEFAULT - start_offset; // 현재 페이지에서 읽을 수 있는 데이터량
+        int to_copy = (bytes_to_read < (size_t)page_avail) ? bytes_to_read : (size_t)page_avail;
 
-        // 현재 페이지에서 읽을 수 있는 최대 바이트 계산
-        int bytes_from_page = bytes_to_read < PAGE_DATA_SIZE_DEFAULT ? bytes_from_page : PAGE_DATA_SIZE_DEFAULT;
+        // buf에 복사
+        memcpy(buf + bytes_read, data_buf + start_offset, to_copy);
 
-        // 데이터를 버퍼로 복사
-        memcpy(buf + bytes_read, data_buf, bytes_from_page);         
+        bytes_read += to_copy;
+        bytes_to_read -= to_copy;
 
-        bytes_read += bytes_from_page;
-        bytes_to_read -= bytes_from_page;
+        // 다음 페이지부터는 start_offset = 0으로 초기화
+        start_offset = 0;
         page_id++;
-        if(page_id>=PAGES_PER_BLOCK_DEFAULT)
-            break;
     }
-    
-    fprintf(stdout, "[uffs_read] finished\n");
+
+    fprintf(stdout, "[uffs_read] finished, bytes_read=%zu\n", bytes_read);
     return bytes_read;
 }
+
 
 int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi) {
@@ -298,7 +316,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
         tag.s.dirty = 1;
         tag.s.valid = 0;
         tag.s.type = UFFS_TYPE_DATA;
-        tag.s.data_len = 0;  // 초기화된 페이지는 데이터 없음
+        tag.s.data_len = 512;  // 초기화된 페이지는 데이터 없음
         tag.s.serial = data_node->u.data.serial;
         tag.s.page_id = page_id;
         tag.s.parent = file_node->u.file.serial;
@@ -360,7 +378,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // 파일 크기 갱신
     file_node->u.file.len = written;
-
+    data_node->u.data.len = written;
     // 메타데이터 갱신
     uffs_FileInfo file_info = {0};
     updateFileInfoPage(&dev, file_node, &file_info, 0, UFFS_TYPE_FILE);

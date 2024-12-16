@@ -8,7 +8,7 @@
 #include "uffs_types.h"
 #include "uffs_disk.h"
 
-#define EMPTY_NODE 0xffff				//!< special index num of empty node.
+#define EMPTY_NODE ((TreeNode*)NULL)
 
 struct DirhSt {		/* 8 bytes */
 	u16 block;
@@ -45,8 +45,8 @@ typedef struct uffs_TreeNodeSt {
 		struct FilehSt file;
 		struct FdataSt data;
 	} u;
-	uint64_t hash_next;
-	uint64_t hash_prev;
+	struct uffs_TreeNodeSt *hash_next;
+	struct uffs_TreeNodeSt *hash_prev;
 } TreeNode;
 
 #define DIR_NODE_HASH_MASK		0x1f

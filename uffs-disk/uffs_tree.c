@@ -125,17 +125,8 @@ URET uffs_BuildTree(uffs_Device *dev) {
 			node->u.data.parent = tag.s.parent;
 			node->u.data.serial = tag.s.serial;
 			node->u.data.block = block;
-
-            int page_id = 0;
-            while(page_id < PAGES_PER_BLOCK_DEFAULT){
-                readPage(dev->fd, node->u.file.block, page_id, &mini_header, NULL, &tag);
-
-                if(mini_header.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
-                    break;
-
-                node->u.data.len+=tag.s.data_len;
-                page_id++;
-            }
+            node->u.data.len=tag.s.data_len;
+                
             uffs_InsertToDataEntry(dev, node);
 			break;
 		default:
@@ -188,28 +179,57 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
     }
 
     while (token != NULL) {
-        printf("[uffs_TreeFindNodeByName] directory: %s\n", token);
-
+        // 디렉토리 검색 성공 시
         tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
-        *type = UFFS_TYPE_DIR;
-        if (tmp_node == NULL) {
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
-            *type = UFFS_TYPE_FILE;
+        if (tmp_node != NULL) {
+            if (type != NULL) {
+                *type = UFFS_TYPE_DIR;
+            }
+            cur_node = tmp_node;
+            // 다음 토큰 처리
+            token = strtok(NULL, "/");
+            continue;
         }
 
-        // tmp_node가 NULL인 경우 처리
-        if (tmp_node == NULL) {
-            fprintf(stderr, "[uffs_TreeFindNodeByName] error: Node not found for %s\n", token);
-            return U_FAIL;
+        // 디렉토리에서 못 찾았을 경우 파일 검색
+        tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
+        if (tmp_node != NULL) {
+            if (type != NULL) {
+                *type = UFFS_TYPE_FILE;
+            }
+            cur_node = tmp_node;
+            // 다음 토큰 처리
+            token = strtok(NULL, "/");
+            continue;
         }
 
-        cur_node = tmp_node;
-        token = strtok(NULL, "/");
+        // 둘 다 못 찾은 경우
+        fprintf(stderr, "[uffs_TreeFindNodeByName] error: Node not found for %s\n", token);
+        return U_FAIL;
+
     }
 
     *node = cur_node;
+    if (object_info != NULL) {
+        uffs_FileInfo temp_info;
+        u32 file_len = 0; // 태그에서 가져올 파일 길이
 
-    fprintf(stdout, "[uffs_TreeFindNodeByName] finished - type: %d\n", *type);
+        if (getFileInfoBySerial(dev->fd, (*node)->u.file.serial, &temp_info, &file_len) == U_SUCC) {
+            memcpy(&object_info->info, &temp_info, sizeof(uffs_FileInfo));
+            object_info->len = file_len;
+            object_info->serial = (*node)->u.file.serial;
+        } else {
+            // 파일 정보 가져오기 실패시 처리
+            fprintf(stderr, "[uffs_TreeFindNodeByName] can't get file info by serial\n");
+        }
+    }
+
+
+    if (type != NULL) {
+        fprintf(stdout, "[uffs_TreeFindNodeByName] finished - type: %d\n", *type);
+    } else {
+        fprintf(stdout, "[uffs_TreeFindNodeByName] finished - type is NULL\n");
+    }    
     return U_SUCC;
 }
 
@@ -313,7 +333,7 @@ TreeNode * uffs_TreeFindDataNode(uffs_Device *dev, u16 parent, u16 serial) {
 
 TreeNode * uffs_TreeFindDataNodeByParent(uffs_Device *dev, u16 parent) {
     fprintf(stdout,"[uffs_TreeFindDataNodeByParent] started\n");
-    TreeNode *node = (TreeNode *)malloc(sizeof(TreeNode));
+    TreeNode *node;
     struct uffs_TreeSt *tree = &(dev->tree);
     for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
 		node = tree->data_entry[i];
@@ -530,32 +550,42 @@ URET initNode(uffs_Device *dev, TreeNode *node, int block_id,u8 type, u16 parent
     return U_SUCC;
 }
 
-// 메타데이터 작성
 URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_info, int is_create, u8 type) {
-
     uffs_MiniHeader mini_header={0x01,0x00,0xFFFF};
     uffs_Tag tag={0};
     if(is_create){
         file_info->create_time = GET_CURRENT_TIME();
     }
-    if(type==UFFS_TYPE_DIR){
+
+    // 파일인지 디렉토리인지에 따라 태그와 file_info 설정
+    if(type == UFFS_TYPE_DIR){
         file_info->attr = FILE_ATTR_DIR;
         tag.s.type = UFFS_TYPE_DIR;
         tag.s.serial = node->u.dir.serial;
         tag.s.parent = node->u.dir.parent;
-    }else{
+        file_info->name_len = strlen(file_info->name);
+        // 디렉토리는 길이 0
+        tag.s.data_len = 0; 
+    } else {
         file_info->attr = FILE_ATTR_WRITE; // 일반 파일
         tag.s.type = UFFS_TYPE_FILE;
         tag.s.serial = node->u.file.serial;
         tag.s.parent = node->u.file.parent;
+        file_info->name_len = strlen(file_info->name);
+        
+        // 파일 길이를 태그에 반영
+        tag.s.data_len = node->u.file.len; 
     }
+
     file_info->access = GET_CURRENT_TIME();
     file_info->last_modify = GET_CURRENT_TIME();
-    file_info->name_len = strlen(file_info->name);
+    // 파일 길이 정보는 file_info 구조체에는 없음.
+    // 다만 diskFormat에 file_info 확장을 원치 않으면 file_info에는 길이를 넣지 않고 tag만으로 길이 관리.
+
+    // tag 기본값들
     tag.s.dirty = 1;
     tag.s.valid = 0;
     tag.s.block_ts = 0;
-    tag.s.data_len = 0;
     tag.s.page_id = 0;
     tag.s.tag_ecc = TAG_ECC_DEFAULT;
     tag.data_sum = 0;

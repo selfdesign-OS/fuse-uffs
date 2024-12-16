@@ -117,7 +117,9 @@ URET diskFormat(int fd) {
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
     // fprintf(stdout, "[readPage] readPage called.\n");
     char page_buf[PAGE_SIZE_DEFAULT];
-    if(pread(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
+    off_t read_offset = block_id * (PAGES_PER_BLOCK_DEFAULT * PAGE_SIZE_DEFAULT)
+             + page_Id * PAGE_SIZE_DEFAULT;
+    if(pread(fd,page_buf,sizeof(page_buf),read_offset)<0){
         fprintf(stderr, "[readPage] readPage error.\n");
         return U_FAIL;
     }
@@ -176,21 +178,27 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
         return U_FAIL;
     }
 
+
     return U_SUCC;
 }
 
 
-URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info) {
+URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info, u32 *out_len) {
     uffs_Tag tag = {0};
     for (int block = 0; block < TOTAL_BLOCKS_DEFAULT; block++) {
         if (readPage(fd, block, 0, NULL, (char *)file_info, &tag) == U_SUCC) {
-            if (tag.s.serial == serial)
+            if (tag.s.serial == serial) {
+                // 여기서 tag.s.data_len이 파일 길이
+                if (out_len) {
+                    *out_len = tag.s.data_len;
+                }
                 return U_SUCC;
+            }
         }
     }
     return U_FAIL;
 }
-    
+
 // 빈 블록 찾기
 URET getFreeBlock(int fd, int *free_block_id, u16 *serial) {
     // 여기서는 2번 블록부터 free라고 가정 (0:마법,1:root)
