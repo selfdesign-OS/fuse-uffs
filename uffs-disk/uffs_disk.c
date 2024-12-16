@@ -134,18 +134,12 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
 
 URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag* tag) {
 
-    if(data != NULL){
-        fprintf(stdout, "data[0]: %d\n", data[0]);
-    }
-
     // 페이지 버퍼 초기화
     char page_buf[PAGE_SIZE_DEFAULT];
     memset(page_buf, 0, sizeof(page_buf));
 
     // 오프셋 설정 및 데이터 복사
     off_t offset = 0;
-
-
 
     // MiniHeader 복사
     if (mini_header != NULL) {

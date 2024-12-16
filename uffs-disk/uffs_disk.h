@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include "uffs_types.h"
 
-#define MAGIC "FUSE" // must 4 char
+#define MAGIC "AAAA" // must 4 char
 
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
@@ -25,10 +25,10 @@
 
 #define MAX_FILENAME_LENGTH PAGE_DATA_SIZE_DEFAULT-24
 
-#define UFFS_TYPE_DIR		0xA
-#define UFFS_TYPE_FILE		0xB
-#define UFFS_TYPE_DATA		0xC
-#define UFFS_TYPE_RESV		0xD
+#define UFFS_TYPE_DIR		1
+#define UFFS_TYPE_FILE		2
+#define UFFS_TYPE_DATA		3
+// #define UFFS_TYPE_RESV		0
 #define UFFS_TYPE_INVALID	0xFF
 #define ROOT_DIR_SERIAL	0xFF				//!< serial num of root dir
 

@@ -98,17 +98,19 @@ URET uffs_BuildTree(uffs_Device *dev) {
     // 블록 및 페이지 초기화
     for (int block = 1; block < TOTAL_BLOCKS_DEFAULT; block++) {
         uffs_Tag tag = {0};
+        char data[PAGE_DATA_SIZE_DEFAULT];
         uffs_MiniHeader mini_header = {0};
-        readPage(dev->fd, block, 0, &mini_header, NULL, &tag);
+        readPage(dev->fd, block, 0, &mini_header, data, &tag);
         TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
         memset(node, 0, sizeof(TreeNode));
-
+        fprintf(stdout, "[uffs_BuildTree] block: %d, type of tag: %d\n", block, tag.s.type);
         switch (tag.s.type) {
 		case UFFS_TYPE_DIR:
 			node->u.dir.parent = tag.s.parent;
 			node->u.dir.serial = tag.s.serial;
 			node->u.dir.block = block;
 			node->u.dir.checksum = tag.data_sum;
+            fprintf(stdout, "[uffs_BuildTree] made dir node - name: %s\n", ((uffs_FileInfo *)data)->name);
             uffs_InsertToDirEntry(dev, node);
 			break;
 		case UFFS_TYPE_FILE:
@@ -118,6 +120,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
 			node->u.file.checksum = tag.data_sum;
             node->u.file.len = tag.s.data_len;
             uffs_InsertToFileEntry(dev, node);
+            fprintf(stdout, "[uffs_BuildTree] made file node - name: %s\n", ((uffs_FileInfo *)data)->name);
 			break;
 		case UFFS_TYPE_DATA:
 			node->u.data.parent = tag.s.parent;
@@ -135,6 +138,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
                 page_id++;
             }
             uffs_InsertToDataEntry(dev, node);
+            fprintf(stdout, "[uffs_BuildTree] made data node\n");
 			break;
 		default:
 			fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
