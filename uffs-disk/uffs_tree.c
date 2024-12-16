@@ -149,9 +149,9 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
 static URET getRootDir(uffs_Device *dev, TreeNode **cur_node) {
     fprintf(stdout, "[getRootDir] called\n");
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    int hash = GET_DIR_HASH(ROOT_DIR_SERIAL);
     *cur_node = dev->tree.dir_entry[hash];
-    while ((*cur_node)->u.dir.serial != ROOT_SERIAL) {
+    while ((*cur_node)->u.dir.serial != ROOT_DIR_SERIAL) {
         if ((*cur_node)->hash_next == EMPTY_NODE) {
             fprintf(stderr, "[getRootDir] fail - can't find root node\n");
             return U_FAIL;

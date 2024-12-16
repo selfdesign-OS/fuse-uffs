@@ -111,47 +111,75 @@ URET diskFormat(int fd) {
     return U_SUCC;
 }
 
-
-
-
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
     // fprintf(stdout, "[readPage] readPage called.\n");
     char page_buf[PAGE_SIZE_DEFAULT];
-    if(pread(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
+    if(pread(fd, page_buf, sizeof(page_buf), block_id*(PAGES_PER_BLOCK_DEFAULT * PAGE_SIZE_DEFAULT) + page_Id * PAGE_SIZE_DEFAULT) < 0){
         fprintf(stderr, "[readPage] readPage error.\n");
         return U_FAIL;
     }
     off_t offset = 0;
     if(mini_header != NULL)
-        memcpy(mini_header, page_buf+offset,sizeof(uffs_MiniHeader));
+        memcpy(mini_header, page_buf + offset,sizeof(uffs_MiniHeader));
     offset += sizeof(uffs_MiniHeader);
     if(data!=NULL)
-        memcpy(data, page_buf+offset,PAGE_DATA_SIZE_DEFAULT);
-    offset += sizeof(PAGE_DATA_SIZE_DEFAULT);
+        memcpy(data, page_buf + offset, PAGE_DATA_SIZE_DEFAULT);
+    offset += PAGE_DATA_SIZE_DEFAULT;
     if(tag!=NULL)
-        memcpy(tag, page_buf+offset,sizeof(uffs_Tag));
+        memcpy(tag, page_buf + offset, sizeof(uffs_Tag));
 
     // fprintf(stdout, "[readPage] readPage finished.\n");
     return U_SUCC;
 }
 
-URET writePage(int fd, int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
-    // fprintf(stdout, "[writePage] writePage called.\n");
+URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag* tag) {
+
+    if(data != NULL){
+        fprintf(stdout, "data[0]: %d\n", data[0]);
+    }
+
+    // 페이지 버퍼 초기화
     char page_buf[PAGE_SIZE_DEFAULT];
+    memset(page_buf, 0, sizeof(page_buf));
 
+    // 오프셋 설정 및 데이터 복사
     off_t offset = 0;
-    memcpy(page_buf+offset,mini_header,sizeof(uffs_MiniHeader));
-    offset += sizeof(uffs_MiniHeader);
-    memcpy(page_buf+offset,data,PAGE_DATA_SIZE_DEFAULT);
-    offset += sizeof(PAGE_DATA_SIZE_DEFAULT);
-    memcpy(page_buf+offset,tag,sizeof(uffs_Tag));
 
-    if(pwrite(fd,page_buf,sizeof(page_buf),block_id*(PAGES_PER_BLOCK_DEFAULT*PAGE_SIZE_DEFAULT))<0){
-        fprintf(stderr, "[writePage] writePage error.\n");
+
+
+    // MiniHeader 복사
+    if (mini_header != NULL) {
+        memcpy(page_buf + offset, mini_header, sizeof(uffs_MiniHeader));
+        offset += sizeof(uffs_MiniHeader);
+    } else {
+        fprintf(stderr, "[writePage] Error: MiniHeader is NULL\n");
         return U_FAIL;
     }
-    // fprintf(stdout, "[writePage] writePage finished.\n");
+    // Data 복사
+    if (data != NULL) {
+        memcpy(page_buf + offset, data, PAGE_DATA_SIZE_DEFAULT);
+    }
+    offset += PAGE_DATA_SIZE_DEFAULT;  // 데이터 크기만큼 오프셋 증가
+    // Tag 복사
+    if (tag != NULL) {
+        memcpy(page_buf + offset, tag, sizeof(uffs_Tag));
+    } else {
+        fprintf(stderr, "[writePage] Error: Tag is NULL\n");
+        return U_FAIL;
+    }
+
+    // pwrite 호출: 블록과 페이지에 따른 오프셋 계산
+    off_t file_offset = block_id * (PAGES_PER_BLOCK_DEFAULT * PAGE_SIZE_DEFAULT) +
+                        page_Id * PAGE_SIZE_DEFAULT;
+    ssize_t written = pwrite(fd, page_buf, sizeof(page_buf), file_offset);
+
+    if (written != sizeof(page_buf)) {
+        fprintf(stderr, "[writePage] Error: Failed to write full page (written: %ld)\n", written);
+        return U_FAIL;
+    }
+
     return U_SUCC;
+
 }
 
 URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info) {

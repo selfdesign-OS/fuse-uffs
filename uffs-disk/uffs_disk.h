@@ -25,12 +25,12 @@
 
 #define MAX_FILENAME_LENGTH PAGE_DATA_SIZE_DEFAULT-24
 
-#define UFFS_TYPE_DIR		0
-#define UFFS_TYPE_FILE		1
-#define UFFS_TYPE_DATA		2
-#define UFFS_TYPE_RESV		3
+#define UFFS_TYPE_DIR		0xA
+#define UFFS_TYPE_FILE		0xB
+#define UFFS_TYPE_DATA		0xC
+#define UFFS_TYPE_RESV		0xD
 #define UFFS_TYPE_INVALID	0xFF
-#define ROOT_DIR_SERIAL	0				//!< serial num of root dir
+#define ROOT_DIR_SERIAL	0xFF				//!< serial num of root dir
 
 #define UFFS_TAG_PAGE_ID_SIZE_BITS  6
 
