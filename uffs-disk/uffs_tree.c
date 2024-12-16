@@ -210,20 +210,6 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
     }
 
     *node = cur_node;
-    if (object_info != NULL) {
-        uffs_FileInfo temp_info;
-        u32 file_len = 0; // 태그에서 가져올 파일 길이
-
-        if (getFileInfoBySerial(dev->fd, (*node)->u.file.serial, &temp_info, &file_len) == U_SUCC) {
-            memcpy(&object_info->info, &temp_info, sizeof(uffs_FileInfo));
-            object_info->len = file_len;
-            object_info->serial = (*node)->u.file.serial;
-        } else {
-            // 파일 정보 가져오기 실패시 처리
-            fprintf(stderr, "[uffs_TreeFindNodeByName] can't get file info by serial\n");
-        }
-    }
-
 
     if (type != NULL) {
         fprintf(stdout, "[uffs_TreeFindNodeByName] finished - type: %d\n", *type);
@@ -579,8 +565,7 @@ URET updateFileInfoPage(uffs_Device  *dev, TreeNode *node, uffs_FileInfo *file_i
 
     file_info->access = GET_CURRENT_TIME();
     file_info->last_modify = GET_CURRENT_TIME();
-    // 파일 길이 정보는 file_info 구조체에는 없음.
-    // 다만 diskFormat에 file_info 확장을 원치 않으면 file_info에는 길이를 넣지 않고 tag만으로 길이 관리.
+    
 
     // tag 기본값들
     tag.s.dirty = 1;

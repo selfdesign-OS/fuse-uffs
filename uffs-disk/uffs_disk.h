@@ -119,6 +119,6 @@ URET diskFormatCheck(int fd);
 URET diskFormat(int fd);
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
 URET writePage(int fd,int block_id,int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag);
-URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info, u32 *out_len);
+URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info);
 URET getFreeBlock(int fd, int *freeBlockId, u16 *serial);
 #endif

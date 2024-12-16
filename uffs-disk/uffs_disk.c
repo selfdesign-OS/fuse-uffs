@@ -29,7 +29,7 @@ static void setRootTag(uffs_Tag *tag) {
     tag->s.block_ts = 0;             // 블록 타임스탬프 초기화
     tag->s.data_len = 0;             // 데이터 길이 (디렉토리라서 0)
     tag->s.serial = ROOT_DIR_SERIAL; // 루트 디렉토리 시리얼 번호
-    tag->s.parent = ROOT_DIR_SERIAL; // 루트 디렉토리는 부모 없음
+    tag->s.parent = 0; // 루트 디렉토리는 부모 없음
     tag->s.page_id = 0;              // 첫 번째 페이지
     tag->s.tag_ecc = TAG_ECC_DEFAULT; // 태그 ECC 기본값
 }
@@ -124,7 +124,6 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
     off_t offset = 0;
     if (mini_header != NULL) {
         memcpy(mini_header, page_buf + offset, sizeof(uffs_MiniHeader));
-        fprintf(stdout, "[readPage] Data extracted: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
     }
     offset += sizeof(uffs_MiniHeader);
 
@@ -142,20 +141,9 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
 
 
 URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag) {
-    static int previous_block_id = -1;
-    static int previous_page_id = -1;
 
     fprintf(stdout, "[writePage] Called: block_id=%d, page_Id=%d\n", block_id, page_Id);
 
-    // 이전에 동일한 블록과 페이지에 호출되었는지 확인
-    if (previous_block_id == block_id && previous_page_id == page_Id) {
-        fprintf(stdout, "[writePage] Skipping redundant write for block_id=%d, page_Id=%d\n", block_id, page_Id);
-        return U_SUCC;
-    }
-
-    // 이전 블록과 페이지 업데이트
-    previous_block_id = block_id;
-    previous_page_id = page_Id;
 
     // 페이지 버퍼 초기화
     char page_buf[PAGE_SIZE_DEFAULT];
@@ -212,11 +200,6 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
         return U_FAIL;
     }
 
-    // 검증 데이터 출력
-    fprintf(stdout, "[writePage] Verification data: MiniHeader: status=%d, Data: %.*s\n", 
-            ((uffs_MiniHeader*)verify_buf)->status,
-            PAGE_DATA_SIZE_DEFAULT, verify_buf + sizeof(uffs_MiniHeader));
-
     fprintf(stdout, "[writePage] Finished successfully.\n");
     return U_SUCC;
 }
@@ -224,15 +207,11 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
 
 
 
-URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info, u32 *out_len) {
+URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info) {
     uffs_Tag tag = {0};
     for (int block = 0; block < TOTAL_BLOCKS_DEFAULT; block++) {
         if (readPage(fd, block, 0, NULL, (char *)file_info, &tag) == U_SUCC) {
             if (tag.s.serial == serial) {
-                // 여기서 tag.s.data_len이 파일 길이
-                if (out_len) {
-                    *out_len = tag.s.data_len;
-                }
                 return U_SUCC;
             }
         }
