@@ -48,16 +48,27 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 		result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info);
 	}
 	else {
-		if (result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info) != U_SUCC) {
-			fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
+        result = uffs_TreeFindNodeByName(&dev, &node, path, &type, &object_info);
+        if (result != U_SUCC) {
+            fprintf(stderr, "[uffs_getattr] result is U_FAIL\n");
             return -ENOENT;
-        }
+}
 	}
     
-    stbuf->st_mode = (object_info.info.attr & FILE_ATTR_DIR ? US_IFDIR : US_IFREG);
-    // TODO: should implement nlink
-    stbuf->st_nlink = 2;
-    stbuf->st_size = object_info.len;
+    if (type == UFFS_TYPE_DIR) {
+        // 디렉토리인 경우
+        stbuf->st_mode = __S_IFDIR | 0755;
+        stbuf->st_nlink = 2; // 기본적으로 '.'과 '..' 때문에 최소 2
+        stbuf->st_size = object_info.len; // 일반적으로 디렉토리는 고정 크기로 설정
+    } else if (type == UFFS_TYPE_FILE) {
+        // 파일인 경우
+        stbuf->st_mode = __S_IFREG | 0644;
+        stbuf->st_nlink = 1; // 일반적으로 파일은 링크 개수가 1
+        stbuf->st_size = object_info.len; // 파일의 실제 길이
+    } else {
+        // 알려지지 않은 타입일 경우 에러 처리
+        return -ENOENT;
+    }
 
 	fprintf(stdout, "[uffs_getattr] finished\n");
 	return 0;

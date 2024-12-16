@@ -6,7 +6,7 @@
 #include <sys/types.h>
 #include "uffs_types.h"
 
-#define MAGIC "FUSE" // must 4 char
+#define MAGIC "IMJA" // must 4 char
 
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
@@ -30,7 +30,7 @@
 #define UFFS_TYPE_DATA		2
 #define UFFS_TYPE_RESV		3
 #define UFFS_TYPE_INVALID	0xFF
-#define ROOT_DIR_SERIAL	0				//!< serial num of root dir
+#define ROOT_DIR_SERIAL		0				//!< serial num of root dir
 
 #define UFFS_TAG_PAGE_ID_SIZE_BITS  6
 
