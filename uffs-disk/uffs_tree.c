@@ -193,14 +193,14 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
         printf("[uffs_TreeFindNodeByName] directory: %s\n", token);
 
         // 디렉터리 노드 찾기
-        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, &object_info);
+        tmp_node = uffs_TreeFindDirNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
         if (type != NULL) 
             *type = UFFS_TYPE_DIR;
         // 없으면 파일에서 찾기
         if (tmp_node == NULL) {
             if (type != NULL) 
                 *type = UFFS_TYPE_FILE;
-            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, &object_info);
+            tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, object_info);
         }
         if (tmp_node == NULL) {
             fprintf(stderr,"[uffs_TreeFindNodeByName] error 1\n");
