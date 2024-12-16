@@ -114,30 +114,49 @@ URET diskFormat(int fd) {
 
 
 
-URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag){
-    // fprintf(stdout, "[readPage] readPage called.\n");
-    char page_buf[PAGE_SIZE_DEFAULT];
-    off_t read_offset = block_id * (PAGES_PER_BLOCK_DEFAULT * PAGE_SIZE_DEFAULT)
-             + page_Id * PAGE_SIZE_DEFAULT;
-    if(pread(fd,page_buf,sizeof(page_buf),read_offset)<0){
-        fprintf(stderr, "[readPage] readPage error.\n");
-        return U_FAIL;
-    }
-    off_t offset = 0;
-    if(mini_header != NULL)
-        memcpy(mini_header, page_buf+offset,sizeof(uffs_MiniHeader));
-    offset += sizeof(uffs_MiniHeader);
-    if(data!=NULL)
-        memcpy(data, page_buf+offset,PAGE_DATA_SIZE_DEFAULT);
-    offset += PAGE_DATA_SIZE_DEFAULT;
-    if(tag!=NULL)
-        memcpy(tag, page_buf+offset,sizeof(uffs_Tag));
+URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag) {
 
-    // fprintf(stdout, "[readPage] readPage finished.\n");
+    char page_buf[PAGE_SIZE_DEFAULT];
+    off_t read_offset = block_id * (PAGES_PER_BLOCK_DEFAULT * PAGE_SIZE_DEFAULT) + page_Id * PAGE_SIZE_DEFAULT;
+
+    ssize_t bytes_read = pread(fd, page_buf, sizeof(page_buf), read_offset);
+    
+    off_t offset = 0;
+    if (mini_header != NULL) {
+        memcpy(mini_header, page_buf + offset, sizeof(uffs_MiniHeader));
+        fprintf(stdout, "[readPage] Data extracted: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
+    }
+    offset += sizeof(uffs_MiniHeader);
+
+    if (data != NULL) {
+        memcpy(data, page_buf + offset, PAGE_DATA_SIZE_DEFAULT);
+    }
+    offset += PAGE_DATA_SIZE_DEFAULT;
+
+    if (tag != NULL) {
+        memcpy(tag, page_buf + offset, sizeof(uffs_Tag));
+    }
+
     return U_SUCC;
 }
 
+
 URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag) {
+    static int previous_block_id = -1;
+    static int previous_page_id = -1;
+
+    fprintf(stdout, "[writePage] Called: block_id=%d, page_Id=%d\n", block_id, page_Id);
+
+    // 이전에 동일한 블록과 페이지에 호출되었는지 확인
+    if (previous_block_id == block_id && previous_page_id == page_Id) {
+        fprintf(stdout, "[writePage] Skipping redundant write for block_id=%d, page_Id=%d\n", block_id, page_Id);
+        return U_SUCC;
+    }
+
+    // 이전 블록과 페이지 업데이트
+    previous_block_id = block_id;
+    previous_page_id = page_Id;
+
     // 페이지 버퍼 초기화
     char page_buf[PAGE_SIZE_DEFAULT];
     memset(page_buf, 0, sizeof(page_buf));
@@ -148,6 +167,7 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     // MiniHeader 복사
     if (mini_header != NULL) {
         memcpy(page_buf + offset, mini_header, sizeof(uffs_MiniHeader));
+        fprintf(stdout, "[writePage] MiniHeader written: status=%d\n", mini_header->status);
         offset += sizeof(uffs_MiniHeader);
     } else {
         fprintf(stderr, "[writePage] Error: MiniHeader is NULL\n");
@@ -157,12 +177,16 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     // Data 복사
     if (data != NULL) {
         memcpy(page_buf + offset, data, PAGE_DATA_SIZE_DEFAULT);
+        fprintf(stdout, "[writePage] Data to write: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
+    } else {
+        fprintf(stdout, "[writePage] Warning: Data is NULL\n");
     }
     offset += PAGE_DATA_SIZE_DEFAULT;  // 데이터 크기만큼 오프셋 증가
 
     // Tag 복사
     if (tag != NULL) {
         memcpy(page_buf + offset, tag, sizeof(uffs_Tag));
+        fprintf(stdout, "[writePage] Tag written: valid=%d, dirty=%d\n", tag->s.valid, tag->s.dirty);
     } else {
         fprintf(stderr, "[writePage] Error: Tag is NULL\n");
         return U_FAIL;
@@ -174,13 +198,30 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
 
     ssize_t written = pwrite(fd, page_buf, sizeof(page_buf), file_offset);
     if (written != sizeof(page_buf)) {
-        fprintf(stderr, "[writePage] Error: Failed to write full page (written: %ld)\n", written);
+        fprintf(stderr, "[writePage] Error: Failed to write full page (expected: %zu, written: %zd)\n", sizeof(page_buf), written);
+        return U_FAIL;
+    } else {
+        fprintf(stdout, "[writePage] Successfully wrote %zd bytes to block_id=%d, page_Id=%d\n", written, block_id, page_Id);
+    }
+
+    // 데이터 검증
+    char verify_buf[PAGE_SIZE_DEFAULT];
+    ssize_t read_bytes = pread(fd, verify_buf, sizeof(page_buf), file_offset);
+    if (read_bytes != sizeof(page_buf)) {
+        fprintf(stderr, "[writePage] Error: Failed to read back full page (expected: %zu, read: %zd)\n", sizeof(page_buf), read_bytes);
         return U_FAIL;
     }
 
+    // 검증 데이터 출력
+    fprintf(stdout, "[writePage] Verification data: MiniHeader: status=%d, Data: %.*s\n", 
+            ((uffs_MiniHeader*)verify_buf)->status,
+            PAGE_DATA_SIZE_DEFAULT, verify_buf + sizeof(uffs_MiniHeader));
 
+    fprintf(stdout, "[writePage] Finished successfully.\n");
     return U_SUCC;
 }
+
+
 
 
 URET getFileInfoBySerial(int fd, u32 serial, uffs_FileInfo *file_info, u32 *out_len) {

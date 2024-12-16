@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include "uffs_types.h"
+#include <errno.h>
 
-#define MAGIC "ZZZZ" // must 4 char
+#define MAGIC "QWER" // must 4 char
 
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC

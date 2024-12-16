@@ -59,12 +59,12 @@ int uffs_getattr(const char *path, struct stat *stbuf)
         // 디렉토리인 경우
         stbuf->st_mode = __S_IFDIR | 0755;
         stbuf->st_nlink = 2; // 기본적으로 '.'과 '..' 때문에 최소 2
-        stbuf->st_size = object_info.len; // 일반적으로 디렉토리는 고정 크기로 설정
+        stbuf->st_size = 0; // 일반적으로 디렉토리는 고정 크기로 설정
     } else if (type == UFFS_TYPE_FILE) {
         // 파일인 경우
         stbuf->st_mode = __S_IFREG | 0644;
         stbuf->st_nlink = 1; // 일반적으로 파일은 링크 개수가 1
-        stbuf->st_size = object_info.len; // 파일의 실제 길이
+        stbuf->st_size = PAGE_DATA_SIZE_DEFAULT; // 파일의 실제 길이
     } else {
         // 알려지지 않은 타입일 경우 에러 처리
         return -ENOENT;
@@ -192,42 +192,53 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
     fprintf(stderr, "[uffs_open] error\n");
 	return -ENOENT;
 }
+
 int uffs_read(const char *path, char *buf, size_t size, off_t offset,
-              struct fuse_file_info *fi)
-{
+              struct fuse_file_info *fi) {
     fprintf(stdout, "[uffs_read] called\n");
+    fprintf(stdout, "[uffs_read] path: %s, size: %zu, offset: %ld\n", path, size, offset);
+
     TreeNode* file_node;
     TreeNode* data_node;
     int result;
 
-    // 파일 노드를 찾는다.
+    // 파일 노드 찾기
+    fprintf(stdout, "[uffs_read] Finding file node for path: %s\n", path);
     result = uffs_TreeFindNodeByName(&dev, &file_node, path, NULL, NULL);
 
     if (result == U_FAIL) {
-        fprintf(stderr, "[uffs_read] file node error\n");
-        return -ENOENT;	
-    } 
-
-    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    if (data_node == NULL) {
-        fprintf(stderr, "[uffs_read] data node error\n");
+        fprintf(stderr, "[uffs_read] Error: File node not found for path: %s\n", path);
         return -ENOENT;
     }
+    fprintf(stdout, "[uffs_read] File node found: serial=%u, block=%d\n", file_node->u.file.serial, file_node->u.file.block);
+
+    // 데이터 노드 찾기
+    fprintf(stdout, "[uffs_read] Finding data node for file serial: %u\n", file_node->u.file.serial);
+    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
+
+    if (data_node == NULL) {
+        fprintf(stderr, "[uffs_read] Error: Data node not found for file serial: %u\n", file_node->u.file.serial);
+        return -ENOENT;
+    }
+    fprintf(stdout, "[uffs_read] Data node found: serial=%u, block=%d, length=%u\n", data_node->u.data.serial, data_node->u.data.block, data_node->u.data.len);
 
     // 파일 길이보다 offset이 크면 읽을 것 없음
     if (offset >= data_node->u.data.len) {
-        fprintf(stdout, "[uffs_read] offset beyond file length\n");
+        fprintf(stdout, "[uffs_read] Offset (%ld) is beyond file length (%u).\n", offset, data_node->u.data.len);
         return 0;
     }
 
     // 읽어야 할 크기가 파일 남은 길이를 초과하면 조정
     if (size > data_node->u.data.len - offset) {
         size = data_node->u.data.len - offset;
+        fprintf(stdout, "[uffs_read] Adjusted read size to %zu due to remaining file length.\n", size);
     }
 
     // offset에 따라 시작 페이지/오프셋 계산
     int start_page = offset / PAGE_DATA_SIZE_DEFAULT;
     int start_offset = offset % PAGE_DATA_SIZE_DEFAULT;
+
+    fprintf(stdout, "[uffs_read] Start page: %d, start offset: %d\n", start_page, start_offset);
 
     int page_id = start_page;
     size_t bytes_to_read = size;
@@ -235,41 +246,37 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     uffs_MiniHeader miniHeader;
     char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
 
-    while (bytes_to_read > 0 && page_id < PAGES_PER_BLOCK_DEFAULT) {
-        // 해당 페이지 읽기
-        if (readPage(dev.fd, data_node->u.data.block, page_id, &miniHeader, data_buf, NULL) != U_SUCC) {
-            fprintf(stderr, "[uffs_read] page read error at page %d\n", page_id);
-            break; // 읽을 페이지 없으면 종료
-        }
+    // 페이지별 읽기
+    while (bytes_to_read > 0) {
+        size_t read_size = (bytes_to_read < PAGE_DATA_SIZE_DEFAULT) ? bytes_to_read : PAGE_DATA_SIZE_DEFAULT;
 
-        if (miniHeader.status == 0xFF) {
-            // 더 이상 유효한 페이지 없음
+        if (readPage(dev.fd, data_node->u.data.block, page_id, &miniHeader, data_buf, NULL) != U_SUCC) {
+            fprintf(stderr, "[uffs_read] Error: Failed to read page %d in block %d.\n", page_id, data_node->u.data.block);
             break;
+        } else {
+            fprintf(stdout, "[uffs_read] Read success at block %d, page %d. Data: %.*s\n",
+                    data_node->u.data.block, page_id, read_size, data_buf);
         }
-        fprintf(stdout, "[uffs_read] data is %s\n", data_buf);
-        // 이번 페이지에서 읽을 수 있는 바이트 계산
-        int page_avail = PAGE_DATA_SIZE_DEFAULT - start_offset; // 현재 페이지에서 읽을 수 있는 데이터량
-        int to_copy = (bytes_to_read < (size_t)page_avail) ? bytes_to_read : (size_t)page_avail;
 
         // buf에 복사
-        memcpy(buf + bytes_read, data_buf + start_offset, to_copy);
+        memcpy(buf + bytes_read, data_buf + start_offset, read_size);
 
-        bytes_read += to_copy;
-        bytes_to_read -= to_copy;
-
-        // 다음 페이지부터는 start_offset = 0으로 초기화
-        start_offset = 0;
+        bytes_read += read_size;
+        bytes_to_read -= read_size;
         page_id++;
+        start_offset = 0;  // 이후 페이지는 offset 없음
     }
 
-    fprintf(stdout, "[uffs_read] finished, bytes_read=%zu\n", bytes_read);
+    // 데이터 출력
+    fprintf(stdout, "[uffs_read] Data read: %.*s\n", (int)bytes_read, buf);
+
     return bytes_read;
 }
 
 
 int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi) {
-    fprintf(stdout, "[uffs_write] called, path: %s, size: %zu\n", path, size);
+    fprintf(stdout, "[uffs_write] called, data: %s, path: %s, size: %zu\n", buf, path, size);
 
     TreeNode *file_node;
     TreeNode *data_node;
@@ -307,26 +314,26 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
         uffs_InsertNodeToTree(&dev, UFFS_TYPE_DATA, data_node);
     }
 
-    // 데이터 블록 초기화 (모든 페이지를 0으로 설정)
+    // // 데이터 블록 초기화 (모든 페이지를 0으로 설정)
     int block_id = data_node->u.data.block;
-    for (int page_id = 0; page_id < PAGES_PER_BLOCK_DEFAULT; page_id++) {
-        char empty_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-        uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
-        uffs_Tag tag = {0};
-        tag.s.dirty = 1;
-        tag.s.valid = 0;
-        tag.s.type = UFFS_TYPE_DATA;
-        tag.s.data_len = 512;  // 초기화된 페이지는 데이터 없음
-        tag.s.serial = data_node->u.data.serial;
-        tag.s.page_id = page_id;
-        tag.s.parent = file_node->u.file.serial;
+    // for (int page_id = 0; page_id < PAGES_PER_BLOCK_DEFAULT; page_id++) {
+    //     char empty_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+    //     uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
+    //     uffs_Tag tag = {0};
+    //     tag.s.dirty = 1;
+    //     tag.s.valid = 0;
+    //     tag.s.type = UFFS_TYPE_DATA;
+    //     tag.s.data_len = 512;  // 초기화된 페이지는 데이터 없음
+    //     tag.s.serial = data_node->u.data.serial;
+    //     tag.s.page_id = page_id;
+    //     tag.s.parent = file_node->u.file.serial;
 
-        // 빈 페이지 쓰기
-        if (writePage(dev.fd, block_id, page_id, &mini_header, empty_buf, &tag) == U_FAIL) {
-            fprintf(stderr, "[uffs_write] failed to initialize page %d\n", page_id);
-            return -EIO;
-        }
-    }
+    //     // 빈 페이지 쓰기
+    //     if (writePage(dev.fd, block_id, page_id, &mini_header, empty_buf, &tag) == U_FAIL) {
+    //         fprintf(stderr, "[uffs_write] failed to initialize page %d\n", page_id);
+    //         return -EIO;
+    //     }
+    // }
 
     // 현재까지 작성된 데이터
     size_t written = 0;
@@ -352,6 +359,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 
         // 입력 데이터를 복사
         memcpy(data_buf, buf + written, write_size);
+        fprintf(stdout, "[uffs_write] data: %s\n", data_buf);
 
         // 페이지 태그 설정
         uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
@@ -368,6 +376,8 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
         if (writePage(dev.fd, block_id, page_id, &mini_header, data_buf, &tag) == U_FAIL) {
             fprintf(stderr, "[uffs_write] failed to write page %d\n", page_id);
             return -EIO;
+        }else{
+            fprintf(stdout, "[uffs_write] write success at block id %d, page %d, data: %s\n",block_id, page_id, data_buf);
         }
 
         written += write_size;
