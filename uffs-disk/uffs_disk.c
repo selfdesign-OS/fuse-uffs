@@ -121,7 +121,7 @@ URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, c
     off_t offset = 0;
     if (mini_header != NULL) {
         memcpy(mini_header, page_buf + offset, sizeof(uffs_MiniHeader));
-        fprintf(stdout, "[readPage] Data extracted: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
+        // fprintf(stdout, "[readPage] Data extracted: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
     }
     offset += sizeof(uffs_MiniHeader);
 
@@ -142,11 +142,11 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     static int previous_block_id = -1;
     static int previous_page_id = -1;
 
-    fprintf(stdout, "[writePage] Called: block_id=%d, page_Id=%d\n", block_id, page_Id);
+    // fprintf(stdout, "[writePage] Called: block_id=%d, page_Id=%d\n", block_id, page_Id);
 
     // 이전에 동일한 블록과 페이지에 호출되었는지 확인
     if (previous_block_id == block_id && previous_page_id == page_Id) {
-        fprintf(stdout, "[writePage] Skipping redundant write for block_id=%d, page_Id=%d\n", block_id, page_Id);
+        // fprintf(stdout, "[writePage] Skipping redundant write for block_id=%d, page_Id=%d\n", block_id, page_Id);
         return U_SUCC;
     }
 
@@ -195,10 +195,10 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
 
     ssize_t written = pwrite(fd, page_buf, sizeof(page_buf), file_offset);
     if (written != sizeof(page_buf)) {
-        fprintf(stderr, "[writePage] Error: Failed to write full page (expected: %zu, written: %zd)\n", sizeof(page_buf), written);
+        // fprintf(stderr, "[writePage] Error: Failed to write full page (expected: %zu, written: %zd)\n", sizeof(page_buf), written);
         return U_FAIL;
     } else {
-        fprintf(stdout, "[writePage] Successfully wrote %zd bytes to block_id=%d, page_Id=%d\n", written, block_id, page_Id);
+        // fprintf(stdout, "[writePage] Successfully wrote %zd bytes to block_id=%d, page_Id=%d\n", written, block_id, page_Id);
     }
 
     // 데이터 검증
@@ -210,11 +210,11 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     }
 
     // 검증 데이터 출력
-    fprintf(stdout, "[writePage] Verification data: MiniHeader: status=%d, Data: %.*s\n", 
-            ((uffs_MiniHeader*)verify_buf)->status,
-            PAGE_DATA_SIZE_DEFAULT, verify_buf + sizeof(uffs_MiniHeader));
+    // fprintf(stdout, "[writePage] Verification data: MiniHeader: status=%d, Data: %.*s\n", 
+    //         ((uffs_MiniHeader*)verify_buf)->status,
+    //         PAGE_DATA_SIZE_DEFAULT, verify_buf + sizeof(uffs_MiniHeader));
 
-    fprintf(stdout, "[writePage] Finished successfully.\n");
+    // fprintf(stdout, "[writePage] Finished successfully.\n");
     return U_SUCC;
 }
 

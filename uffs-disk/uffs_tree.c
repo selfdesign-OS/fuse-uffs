@@ -106,7 +106,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
         readPage(dev->fd, block, 0, &mini_header, data, &tag);
         TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
         memset(node, 0, sizeof(TreeNode));
-        fprintf(stdout, "[uffs_BuildTree] block: %d, type of tag: %d\n", block, tag.s.type);
+        // fprintf(stdout, "[uffs_BuildTree] block: %d, type of tag: %d\n", block, tag.s.type);
         switch (tag.s.type) {
 		case UFFS_TYPE_DIR:
 			node->u.dir.parent = tag.s.parent;
@@ -135,7 +135,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
             fprintf(stdout, "[uffs_BuildTree] made data node\n");
 			break;
 		default:
-			fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
+			// fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
 			break;
 		}
     }
