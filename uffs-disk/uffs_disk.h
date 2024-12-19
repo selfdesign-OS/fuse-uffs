@@ -7,7 +7,7 @@
 #include "uffs_types.h"
 #include <errno.h>
 
-#define MAGIC "FUSE" // must 4 char
+#define MAGIC "AAAA" // must 4 char
 
 /** ECC options (uffs_StorageAttrSt.ecc_opt) */
 #define UFFS_ECC_NONE		0	//!< do not use ECC
@@ -24,7 +24,7 @@
 #define TOTAL_BLOCKS_DEFAULT			128
 #define ECC_OPTION_DEFAULT				UFFS_ECC_SOFT
 
-#define MAX_FILENAME_LENGTH PAGE_DATA_SIZE_DEFAULT-24
+#define MAX_FILENAME_LENGTH PAGE_DATA_SIZE_DEFAULT - 24
 
 #define UFFS_TYPE_DIR		1
 #define UFFS_TYPE_FILE		2

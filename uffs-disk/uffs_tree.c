@@ -100,17 +100,19 @@ URET uffs_BuildTree(uffs_Device *dev) {
     // 블록 및 페이지 초기화
     for (int block = 1; block < TOTAL_BLOCKS_DEFAULT; block++) {
         uffs_Tag tag = {0};
+        char data[PAGE_DATA_SIZE_DEFAULT];
         uffs_MiniHeader mini_header = {0};
-        readPage(dev->fd, block, 0, &mini_header, NULL, &tag);
+        readPage(dev->fd, block, 0, &mini_header, data, &tag);
         TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
         memset(node, 0, sizeof(TreeNode));
-
+        fprintf(stdout, "[uffs_BuildTree] block: %d, type of tag: %d\n", block, tag.s.type);
         switch (tag.s.type) {
 		case UFFS_TYPE_DIR:
 			node->u.dir.parent = tag.s.parent;
 			node->u.dir.serial = tag.s.serial;
 			node->u.dir.block = block;
 			node->u.dir.checksum = tag.data_sum;
+            fprintf(stdout, "[uffs_BuildTree] made dir node - name: %s\n", ((uffs_FileInfo *)data)->name);
             uffs_InsertToDirEntry(dev, node);
 			break;
 		case UFFS_TYPE_FILE:
@@ -120,6 +122,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
 			node->u.file.checksum = tag.data_sum;
             node->u.file.len = tag.s.data_len;
             uffs_InsertToFileEntry(dev, node);
+            fprintf(stdout, "[uffs_BuildTree] made file node - name: %s\n", ((uffs_FileInfo *)data)->name);
 			break;
 		case UFFS_TYPE_DATA:
 			node->u.data.parent = tag.s.parent;
@@ -128,6 +131,7 @@ URET uffs_BuildTree(uffs_Device *dev) {
             node->u.data.len=tag.s.data_len;
                 
             uffs_InsertToDataEntry(dev, node);
+            fprintf(stdout, "[uffs_BuildTree] made data node\n");
 			break;
 		default:
 			fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
@@ -142,9 +146,9 @@ URET uffs_BuildTree(uffs_Device *dev) {
 
 static URET getRootDir(uffs_Device *dev, TreeNode **cur_node) {
     fprintf(stdout, "[getRootDir] called\n");
-    int hash = GET_DIR_HASH(ROOT_SERIAL);
+    int hash = GET_DIR_HASH(ROOT_DIR_SERIAL);
     *cur_node = dev->tree.dir_entry[hash];
-    while ((*cur_node)->u.dir.serial != ROOT_SERIAL) {
+    while ((*cur_node)->u.dir.serial != ROOT_DIR_SERIAL) {
         if ((*cur_node)->hash_next == EMPTY_NODE) {
             fprintf(stderr, "[getRootDir] fail - can't find root node\n");
             return U_FAIL;
@@ -190,7 +194,7 @@ URET uffs_TreeFindNodeByName(uffs_Device *dev, TreeNode **node, const char *name
             token = strtok(NULL, "/");
             continue;
         }
-
+        
         // 디렉토리에서 못 찾았을 경우 파일 검색
         tmp_node = uffs_TreeFindFileNodeByName(dev, token, strlen(token), cur_node->u.dir.serial, NULL);
         if (tmp_node != NULL) {

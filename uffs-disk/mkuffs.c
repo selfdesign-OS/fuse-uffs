@@ -65,6 +65,7 @@ int uffs_getattr(const char *path, struct stat *stbuf)
         stbuf->st_mode = __S_IFREG | 0644;
         stbuf->st_nlink = 1; // 일반적으로 파일은 링크 개수가 1
         stbuf->st_size = PAGE_DATA_SIZE_DEFAULT; // 파일의 실제 길이
+        // stbuf->st_size = object_info.len; // 파일의 실제 길이
     } else {
         // 알려지지 않은 타입일 경우 에러 처리
         return -ENOENT;
@@ -115,7 +116,7 @@ int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
     // '..'은 상위 디렉토리. 루트일 경우 부모가 자기 자신일 수도 있으니
     // 실제로 상위가 없거나 ROOT_SERIAL 일 경우에는 루트로 매핑
-    if (parent_serial != ROOT_SERIAL) {
+    if (parent_serial != ROOT_DIR_SERIAL) {
         filler(buf, "..", NULL, 0);
     } else {
         // 루트 디렉토리면 상위가 없으나 Fuse는 '..'를 요구할 수 있으니 동일하게 루트로 처리

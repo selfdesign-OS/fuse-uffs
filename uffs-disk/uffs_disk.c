@@ -111,9 +111,6 @@ URET diskFormat(int fd) {
     return U_SUCC;
 }
 
-
-
-
 URET readPage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, char* data, uffs_Tag *tag) {
 
     char page_buf[PAGE_SIZE_DEFAULT];
