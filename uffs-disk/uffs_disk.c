@@ -164,7 +164,7 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     // MiniHeader 복사
     if (mini_header != NULL) {
         memcpy(page_buf + offset, mini_header, sizeof(uffs_MiniHeader));
-        fprintf(stdout, "[writePage] MiniHeader written: status=%d\n", mini_header->status);
+        // fprintf(stdout, "[writePage] MiniHeader written: status=%d\n", mini_header->status);
         offset += sizeof(uffs_MiniHeader);
     } else {
         fprintf(stderr, "[writePage] Error: MiniHeader is NULL\n");
@@ -174,16 +174,16 @@ URET writePage(int fd, int block_id, int page_Id, uffs_MiniHeader* mini_header, 
     // Data 복사
     if (data != NULL) {
         memcpy(page_buf + offset, data, PAGE_DATA_SIZE_DEFAULT);
-        fprintf(stdout, "[writePage] Data to write: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
+        // fprintf(stdout, "[writePage] Data to write: %.*s\n", PAGE_DATA_SIZE_DEFAULT, data);
     } else {
-        fprintf(stdout, "[writePage] Warning: Data is NULL\n");
+        // fprintf(stdout, "[writePage] Warning: Data is NULL\n");
     }
     offset += PAGE_DATA_SIZE_DEFAULT;  // 데이터 크기만큼 오프셋 증가
 
     // Tag 복사
     if (tag != NULL) {
         memcpy(page_buf + offset, tag, sizeof(uffs_Tag));
-        fprintf(stdout, "[writePage] Tag written: valid=%d, dirty=%d\n", tag->s.valid, tag->s.dirty);
+        // fprintf(stdout, "[writePage] Tag written: valid=%d, dirty=%d\n", tag->s.valid, tag->s.dirty);
     } else {
         fprintf(stderr, "[writePage] Error: Tag is NULL\n");
         return U_FAIL;

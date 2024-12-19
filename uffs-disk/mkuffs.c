@@ -35,8 +35,7 @@ int uffs_init()
 
 int uffs_getattr(const char *path, struct stat *stbuf)
 {
-	fprintf(stdout, "[uffs_getattr] called\n");
-	fprintf(stdout, "[uffs_getattr] path: %s\n", path);
+	fprintf(stdout, "[uffs_getattr] called - path: %s\n", path);
 
 	TreeNode *node;
 	URET result;
@@ -78,8 +77,7 @@ int uffs_getattr(const char *path, struct stat *stbuf)
 int uffs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
                  off_t offset, struct fuse_file_info *fi)
 {
-    fprintf(stdout, "[uffs_readdir] called\n");
-    fprintf(stdout, "[uffs_readdir] path: %s\n", path);
+    fprintf(stdout, "[uffs_readdir] called - path: %s\n", path);
 
     URET result;
     TreeNode *node = NULL;
@@ -165,14 +163,14 @@ int uffs_opendir(const char *path, struct fuse_file_info *fu)
     
 	URET result;
 	if (strcmp("/", path) == 0) {
-        fprintf(stdout, "[uffs_opendir] finished\n");
+        fprintf(stdout, "[uffs_opendir] finished 1\n");
 		return 0;
 	}
 
 	result = uffs_TreeFindDirNodeByNameWithoutParent(&dev, &node, path);
 
 	if (result == U_SUCC) {
-        fprintf(stdout, "[uffs_opendir] finished\n");
+        fprintf(stdout, "[uffs_opendir] finished 2\n");
         return 0;
     }
     fprintf(stderr, "[uffs_opendir] error\n");
@@ -204,28 +202,28 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     int result;
 
     // 파일 노드 찾기
-    fprintf(stdout, "[uffs_read] Finding file node for path: %s\n", path);
+    // fprintf(stdout, "[uffs_read] Finding file node for path: %s\n", path);
     result = uffs_TreeFindNodeByName(&dev, &file_node, path, NULL, NULL);
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] Error: File node not found for path: %s\n", path);
         return -ENOENT;
     }
-    fprintf(stdout, "[uffs_read] File node found: serial=%u, block=%d\n", file_node->u.file.serial, file_node->u.file.block);
+    // fprintf(stdout, "[uffs_read] File node found: serial=%u, block=%d\n", file_node->u.file.serial, file_node->u.file.block);
 
     // 데이터 노드 찾기
-    fprintf(stdout, "[uffs_read] Finding data node for file serial: %u\n", file_node->u.file.serial);
+    // fprintf(stdout, "[uffs_read] Finding data node for file serial: %u\n", file_node->u.file.serial);
     data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
 
     if (data_node == NULL) {
         fprintf(stderr, "[uffs_read] Error: Data node not found for file serial: %u\n", file_node->u.file.serial);
         return -ENOENT;
     }
-    fprintf(stdout, "[uffs_read] Data node found: serial=%u, block=%d, length=%u\n", data_node->u.data.serial, data_node->u.data.block, data_node->u.data.len);
+    // fprintf(stdout, "[uffs_read] Data node found: serial=%u, block=%d, length=%u\n", data_node->u.data.serial, data_node->u.data.block, data_node->u.data.len);
 
     // 파일 길이보다 offset이 크면 읽을 것 없음
     if (offset >= data_node->u.data.len) {
-        fprintf(stdout, "[uffs_read] Offset (%ld) is beyond file length (%u).\n", offset, data_node->u.data.len);
+        // fprintf(stdout, "[uffs_read] Offset (%ld) is beyond file length (%u).\n", offset, data_node->u.data.len);
         return 0;
     }
 
@@ -239,7 +237,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     int start_page = offset / PAGE_DATA_SIZE_DEFAULT;
     int start_offset = offset % PAGE_DATA_SIZE_DEFAULT;
 
-    fprintf(stdout, "[uffs_read] Start page: %d, start offset: %d\n", start_page, start_offset);
+    // fprintf(stdout, "[uffs_read] Start page: %d, start offset: %d\n", start_page, start_offset);
 
     int page_id = start_page;
     size_t bytes_to_read = size;
@@ -252,11 +250,11 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
         size_t read_size = (bytes_to_read < PAGE_DATA_SIZE_DEFAULT) ? bytes_to_read : PAGE_DATA_SIZE_DEFAULT;
 
         if (readPage(dev.fd, data_node->u.data.block, page_id, &miniHeader, data_buf, NULL) != U_SUCC) {
-            fprintf(stderr, "[uffs_read] Error: Failed to read page %d in block %d.\n", page_id, data_node->u.data.block);
+            // fprintf(stderr, "[uffs_read] Error: Failed to read page %d in block %d.\n", page_id, data_node->u.data.block);
             break;
         } else {
-            fprintf(stdout, "[uffs_read] Read success at block %d, page %d. Data: %.*s\n",
-                    data_node->u.data.block, page_id, read_size, data_buf);
+            // fprintf(stdout, "[uffs_read] Read success at block %d, page %d. Data: %.*s\n",
+            //         data_node->u.data.block, page_id, read_size, data_buf);
         }
 
         // buf에 복사
@@ -269,7 +267,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     }
 
     // 데이터 출력
-    fprintf(stdout, "[uffs_read] Data read: %.*s\n", (int)bytes_read, buf);
+    fprintf(stdout, "[uffs_read] finished - Data read: %.*s\n", (int)bytes_read, buf);
 
     return bytes_read;
 }
@@ -360,7 +358,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 
         // 입력 데이터를 복사
         memcpy(data_buf, buf + written, write_size);
-        fprintf(stdout, "[uffs_write] data: %s\n", data_buf);
+        // fprintf(stdout, "[uffs_write] data: %s\n", data_buf);
 
         // 페이지 태그 설정
         uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
@@ -378,7 +376,7 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
             fprintf(stderr, "[uffs_write] failed to write page %d\n", page_id);
             return -EIO;
         }else{
-            fprintf(stdout, "[uffs_write] write success at block id %d, page %d, data: %s\n",block_id, page_id, data_buf);
+            // fprintf(stdout, "[uffs_write] write success at block id %d, page %d, data: %s\n",block_id, page_id, data_buf);
         }
 
         written += write_size;
@@ -448,7 +446,7 @@ int uffs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
     strncpy(file_info.name, file_name, MAX_FILENAME_LENGTH - 1);
     file_info.name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
 
-    fprintf(stdout, "[uffs_create] fileName: %s\n", file_info.name);
+    // fprintf(stdout, "[uffs_create] fileName: %s\n", file_info.name);
 
 
     if (updateFileInfoPage(&dev, file_node, &file_info, 1, UFFS_TYPE_FILE) == U_FAIL) {
@@ -511,7 +509,7 @@ int uffs_mkdir(const char *path, mode_t mode) {
     strncpy(dir_file_info.name, dir_name, MAX_FILENAME_LENGTH - 1);
     dir_file_info.name[MAX_FILENAME_LENGTH - 1] = '\0'; // 널 종료 보장
 
-    fprintf(stdout, "[uffs_mkdir] fileName: %s\n", dir_file_info.name);
+    // fprintf(stdout, "[uffs_mkdir] fileName: %s\n", dir_file_info.name);
     
     // 디스크 업데이트
     if(updateFileInfoPage(&dev, dir_node, &dir_file_info, 1, UFFS_TYPE_DIR) == U_FAIL){
@@ -538,6 +536,7 @@ struct fuse_operations uffs_oper = {
 
 int main(int argc, char *argv[])
 {
+    fprintf(stderr, "[main] called\n");
     // USB 디바이스 파일 오픈
     dev.fd = open(argv[3], O_RDWR, 0666);
     if (dev.fd < 0) {
@@ -559,6 +558,6 @@ int main(int argc, char *argv[])
         fprintf(stdout, "[main] disk format success\n");
     }
 
-    fprintf(stderr, "[main] init finished\n");
+    fprintf(stderr, "[main] finished\n");
     return fuse_main(3, argv, &uffs_oper, NULL);
 }
