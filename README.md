@@ -1,7 +1,6 @@
 ### Test Demonstration Videos on YouTube
-<a href=" https://youtu.be/TigzcfoqlVU" target="_blank">
-  <img src="https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white" style="width: 150px;"/>
-</a>
+https://youtu.be/TigzcfoqlVU
+
 
 ### Members
 |Jae-hyeong|Sung-woon|byeong-hyeon|
