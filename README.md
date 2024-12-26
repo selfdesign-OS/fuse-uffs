@@ -1,4 +1,4 @@
-# Ghost와 FUSE를 활용한 리눅스 자원관리 시스템 구현
+# FUSE를 활용한 uffs 파일 시스템 구현
 
 ### Members
 |Jae-hyeong|Sung-woon|byeong-hyeon|
