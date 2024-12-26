@@ -1,6 +1,4 @@
-| 팀/개인명 | 리눅스 운영체제의 자원관리 시스템 개선 |
-| --- | --- |
-| 프로젝트명 | Ghost와 FUSE를 활용한 리눅스 자원관리 시스템 구현 |
+# Ghost와 FUSE를 활용한 리눅스 자원관리 시스템 구현
 
 ### Members
 |Jae-hyeong|Sung-woon|byeong-hyeon|
