@@ -7,7 +7,7 @@
 |[JaehyeongIm](https://github.com/JaehyeongIm)|[DingWoonee](https://github.com/DingWoonee)|[bangbang444](https://github.com/bangbang444)|
 
 ### Technologies Used
-<img src="https://img.shields.io/badge/C-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/>
+<img src="https://img.shields.io/badge/C-00599C?style=flat-square&logo=C%2B%2B&logoColor=white"/> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=Ubuntu&logoColor=white"/> <img src="https://img.shields.io/badge/FUSE-4E6C50?style=flat-square&logoColor=white"/>
 
 유튜브 시연영상: https://youtu.be/TigzcfoqlVU
 
