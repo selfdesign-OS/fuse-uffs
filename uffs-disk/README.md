@@ -22,6 +22,7 @@ UFFS(Ultra-low-cost Flash File System) 파일시스템을 FUSE로 구현한 테�
 > - 가비지 컬렉터
 > - CRC 검증
 > - 배드 블록 관리
+> - 파일 수정 (`truncate` 미구현으로 덮어쓰기(`>`) 불가, `offset` 미처리로 추가쓰기(`>>`) 불가)
 
 ---
 
