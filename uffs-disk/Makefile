@@ -24,7 +24,7 @@ $(TARGET): $(OBJS)
 
 # 제거
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET) test_write
 
 # 단위 테스트 (ASan)
 TEST_SRCS = test_write.c mkuffs.c uffs_tree.c uffs_disk.c
