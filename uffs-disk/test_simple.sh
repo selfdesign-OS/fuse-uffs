@@ -9,8 +9,11 @@ FAIL="\033[31m[FAIL]\033[0m"
 g_pass=0; g_fail=0
 
 check() {
-    [ "$2" = "$3" ] && { printf "  $PASS %s\n" "$1"; (( g_pass++ )); } \
-                    || { printf "  $FAIL %s  (기대='%s' 실제='%s')\n" "$1" "$2" "$3"; (( g_fail++ )); }
+    if [ "$2" = "$3" ]; then
+        printf "  $PASS %s\n" "$1"; g_pass=$(( g_pass + 1 ))
+    else
+        printf "  $FAIL %s  (기대='%s' 실제='%s')\n" "$1" "$2" "$3"; g_fail=$(( g_fail + 1 ))
+    fi
 }
 
 # 준비

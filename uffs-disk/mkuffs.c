@@ -71,7 +71,7 @@ int uffs_getattr(const char *path, struct stat *stbuf)
         // 파일인 경우
         stbuf->st_mode = __S_IFREG | 0644;
         stbuf->st_nlink = 1; // 일반적으로 파일은 링크 개수가 1
-        stbuf->st_size = object_info.len; // 파일의 실제 길이
+        stbuf->st_size = node->u.file.len; // 파일의 실제 길이
     } else {
         // 알려지지 않은 타입일 경우 에러 처리
         return -ENOENT;
@@ -206,9 +206,9 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
     TreeNode* file_node;
     TreeNode* data_node;
     int result;
-    
+    u8 type = UFFS_TYPE_FILE;
     // 파일 노드를 찾는다.
-    result = uffs_TreeFindNodeByName(&dev, &file_node, path, UFFS_TYPE_FILE, NULL);
+    result = uffs_TreeFindNodeByName(&dev, &file_node, path, &type, NULL);
 
     if (result == U_FAIL) {
         fprintf(stderr, "[uffs_read] file node error\n");
@@ -240,7 +240,7 @@ int uffs_read(const char *path, char *buf, size_t size, off_t offset,
             break;
 
         // 현재 페이지에서 읽을 수 있는 최대 바이트 계산
-        int bytes_from_page = bytes_to_read < PAGE_DATA_SIZE_DEFAULT ? bytes_from_page : PAGE_DATA_SIZE_DEFAULT;
+        int bytes_from_page = bytes_to_read < PAGE_DATA_SIZE_DEFAULT ? bytes_to_read : PAGE_DATA_SIZE_DEFAULT;
 
         // 데이터를 버퍼로 복사
         memcpy(buf + bytes_read, data_buf, bytes_from_page);         
@@ -292,7 +292,6 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
             return -EIO;
         }
 
-        file_node->u.file.block = data_block_id;
         uffs_InsertNodeToTree(&dev, UFFS_TYPE_DATA, data_node);
     }
 
@@ -367,9 +366,11 @@ int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
 
     // 파일 크기 갱신
     file_node->u.file.len = written;
+    data_node->u.data.len = written;
 
-    // 메타데이터 갱신
+    // 메타데이터 갱신 (기존 파일 이름 보존)
     uffs_FileInfo file_info = {0};
+    getFileInfoBySerial(dev.fd, file_node->u.file.serial, &file_info);
     updateFileInfoPage(&dev, file_node, &file_info, 0, UFFS_TYPE_FILE);
 
     fprintf(stdout, "[uffs_write] finished\n");
