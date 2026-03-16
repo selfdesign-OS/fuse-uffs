@@ -8,9 +8,12 @@
   gcc -Wall uffs.c `pkg-config fuse --cflags --libs` -o uffs
 */
 
+#ifdef UNIT_TEST
+#include "fuse_compat.h"
+#else
 #define FUSE_USE_VERSION 26
-
 #include <fuse.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -511,6 +514,7 @@ struct fuse_operations uffs_oper = {
     .mkdir      = uffs_mkdir
 };
 
+#ifndef UNIT_TEST
 int main(int argc, char *argv[])
 {
     // USB 디바이스 파일 오픈
@@ -537,3 +541,4 @@ int main(int argc, char *argv[])
     fprintf(stderr, "[main] init finished\n");
     return fuse_main(3, argv, &uffs_oper, NULL);
 }
+#endif /* UNIT_TEST */

@@ -26,5 +26,13 @@ $(TARGET): $(OBJS)
 clean:
 	rm -f $(OBJS) $(TARGET)
 
+# 단위 테스트 (ASan)
+TEST_SRCS = test_write.c mkuffs.c uffs_tree.c uffs_disk.c
+TEST_CFLAGS = -Wall -g -DUNIT_TEST -fsanitize=address -D_FILE_OFFSET_BITS=64
+TEST_LDFLAGS = -fsanitize=address
+
+test_write: $(TEST_SRCS) $(HEADERS) fuse_compat.h
+	$(CC) $(TEST_CFLAGS) $(TEST_SRCS) -o test_write $(TEST_LDFLAGS)
+
 # 리빌드
 rebuild: clean all
