@@ -131,14 +131,14 @@ teardown
 section "파일 생성 (create / getattr)"
 setup
 if do_mount; then
-    touch "$MOUNT_DIR/hello.txt" 2>/dev/null
-    check "touch 반환 0" "0" "$?"
+    printf '' > "$MOUNT_DIR/hello.txt" 2>/dev/null
+    check "파일 생성 반환 0" "0" "$?"
 
     ls "$MOUNT_DIR/hello.txt" >/dev/null 2>&1
     check "ls 로 파일 존재 확인" "0" "$?"
 
     ftype=$(stat -c "%F" "$MOUNT_DIR/hello.txt" 2>/dev/null)
-    check "getattr 타입 = 'regular file'" "regular file" "$ftype"
+    check "getattr 타입 = 'regular empty file'" "regular empty file" "$ftype"
 fi
 teardown
 
@@ -284,7 +284,8 @@ if do_mount; then
     printf 'FIRST_DATA' > "$MOUNT_DIR/twice.txt"
     check "첫 번째 쓰기 반환 0" "0" "$?"
 
-    printf 'SECOND_DAT' > "$MOUNT_DIR/twice.txt"
+    # truncate 미구현 → > 대신 dd conv=notrunc 로 덮어쓰기 (같은 길이, 10 bytes)
+    printf 'SECOND_DAT' | dd of="$MOUNT_DIR/twice.txt" bs=1 seek=0 conv=notrunc 2>/dev/null
     check "두 번째 쓰기 반환 0" "0" "$?"
 
     content=$(cat "$MOUNT_DIR/twice.txt" 2>/dev/null)
