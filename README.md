@@ -73,18 +73,9 @@ fusermount -u /mnt/uffs
 # 파일 쓰기/읽기 기본 테스트
 bash test_simple.sh
 
-# 파일 생성, 디렉터리, 다중 파일 등 시나리오 테스트
-bash test_write.sh
+# 파일 생성, 읽기, 쓰기 등 핵심기능에 대한 41개의 테스트
+bash test.sh
 ```
-
-### 단위 테스트 (AddressSanitizer)
-
-```bash
-make test_write
-./test_write
-```
-
----
 
 ## 디스크 레이아웃
 
