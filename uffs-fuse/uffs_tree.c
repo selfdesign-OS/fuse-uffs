@@ -116,9 +116,17 @@ URET uffs_BuildTree(uffs_Device *dev) {
 			node->u.file.serial = tag.s.serial;
 			node->u.file.block = block;
 			node->u.file.checksum = tag.data_sum;
-            node->u.file.len = tag.s.data_len;
+            // 파일 블록 page 1~에서 데이터 길이 합산 (page 0은 메타데이터)
+            node->u.file.len = 0;
+            for (int p = 1; p < PAGES_PER_BLOCK_DEFAULT; p++) {
+                uffs_MiniHeader mh = {0};
+                uffs_Tag t = {0};
+                readPage(dev->fd, block, p, &mh, NULL, &t);
+                if (mh.status == 0xFF) break;
+                node->u.file.len += t.s.data_len;
+            }
             uffs_InsertToFileEntry(dev, node);
-            fprintf(stdout, "[uffs_BuildTree] made file node - name: %s\n", ((uffs_FileInfo *)data)->name);
+            fprintf(stdout, "[uffs_BuildTree] made file node - name: %s, len: %u\n", ((uffs_FileInfo *)data)->name, node->u.file.len);
 			break;
 		case UFFS_TYPE_DATA:
 			node->u.data.parent = tag.s.parent;
@@ -142,6 +150,17 @@ URET uffs_BuildTree(uffs_Device *dev) {
 			fprintf(stderr, "[uffs_BuildTree] UNKNOW TYPE error\n");
 			break;
 		}
+    }
+
+    // 데이터 블록 길이를 파일 노드에 합산
+    for (int i = 0; i < DATA_NODE_ENTRY_LEN; i++) {
+        TreeNode *dnode = (TreeNode*)dev->tree.data_entry[i];
+        while (dnode != (TreeNode*)EMPTY_NODE) {
+            TreeNode *fnode = uffs_TreeFindFileNode(dev, dnode->u.data.parent);
+            if (fnode != NULL)
+                fnode->u.file.len += dnode->u.data.len;
+            dnode = (TreeNode*)dnode->hash_next;
+        }
     }
 
     fprintf(stderr,"[uffs_BuildTree] finished\n");
