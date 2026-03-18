@@ -202,179 +202,197 @@ int uffs_open(const char *path, struct fuse_file_info *fi)
 int uffs_read(const char *path, char *buf, size_t size, off_t offset,
 		      struct fuse_file_info *fi)
 {
-    fprintf(stdout, "[uffs_read] called\n");
-    TreeNode* file_node;
-    TreeNode* data_node;
-    int result;
+    fprintf(stdout, "[uffs_read] called, path: %s, size: %zu, offset: %lld\n",
+            path, size, (long long)offset);
+    TreeNode *file_node;
     u8 type = UFFS_TYPE_FILE;
-    // 파일 노드를 찾는다.
-    result = uffs_TreeFindNodeByName(&dev, &file_node, path, &type, NULL);
 
-    if (result == U_FAIL) {
-        fprintf(stderr, "[uffs_read] file node error\n");
-        return -ENOENT;	
-    } 
-
-    
-    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-
-    if(data_node == NULL){
-        fprintf(stderr, "[uffs_read] data node error\n");
+    if (uffs_TreeFindNodeByName(&dev, &file_node, path, &type, NULL) == U_FAIL || type != UFFS_TYPE_FILE) {
+        fprintf(stderr, "[uffs_read] file node not found\n");
         return -ENOENT;
     }
 
-    if (size > data_node->u.data.len) {
-        size = data_node->u.data.len;
-    }
+    // offset이 파일 끝을 넘으면 읽을 것 없음
+    if ((size_t)offset >= (size_t)file_node->u.file.len)
+        return 0;
 
-    uffs_MiniHeader miniHeader = {0};
-    char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-    int page_id = 0;
-    int bytes_read = 0; // 현재까지 읽은 바이트 수
-    int bytes_to_read = size; // 읽어야할 바이트 수
-    
-    while(bytes_to_read > 0){
-        readPage(dev.fd, data_node->u.file.block, page_id, &miniHeader, data_buf, NULL);
+    // 읽을 수 있는 바이트 수 제한
+    size_t avail = (size_t)file_node->u.file.len - (size_t)offset;
+    if (size > avail)
+        size = avail;
 
-        if(miniHeader.status == 0xFF) // miniheader 사용중이 아니면 페이지 없음
+    int file_data_pages = PAGES_PER_BLOCK_DEFAULT - 1;
+    size_t file_block_end = (size_t)file_data_pages * PAGE_DATA_SIZE_DEFAULT;
+
+    TreeNode *data_node = NULL;
+    if ((size_t)offset + size > file_block_end)
+        data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
+
+    uffs_MiniHeader mh = {0};
+    char data_buf[PAGE_DATA_SIZE_DEFAULT];
+    uffs_Tag tag = {0};
+    size_t bytes_read = 0;
+    size_t cur_offset = (size_t)offset;
+
+    while (bytes_read < size) {
+        int logical_page = (int)(cur_offset / PAGE_DATA_SIZE_DEFAULT);
+        int byte_in_page = (int)(cur_offset % PAGE_DATA_SIZE_DEFAULT);
+
+        int block, phys_page;
+        if (logical_page < file_data_pages) {
+            block     = file_node->u.file.block;
+            phys_page = logical_page + 1;
+        } else {
+            if (data_node == NULL)
+                break;
+            block     = data_node->u.data.block;
+            phys_page = logical_page - file_data_pages;
+        }
+
+        memset(data_buf, 0, sizeof(data_buf));
+        readPage(dev.fd, block, phys_page, &mh, data_buf, &tag);
+        if (mh.status == 0xFF)
             break;
 
-        // 현재 페이지에서 읽을 수 있는 최대 바이트 계산
-        int bytes_from_page = bytes_to_read < PAGE_DATA_SIZE_DEFAULT ? bytes_to_read : PAGE_DATA_SIZE_DEFAULT;
-
-        // 데이터를 버퍼로 복사
-        memcpy(buf + bytes_read, data_buf, bytes_from_page);         
-
-        bytes_read += bytes_from_page;
-        bytes_to_read -= bytes_from_page;
-        page_id++;
-        if(page_id>=PAGES_PER_BLOCK_DEFAULT)
+        // 이 페이지에서 읽을 수 있는 바이트 수
+        int page_avail = (int)tag.s.data_len - byte_in_page;
+        if (page_avail <= 0)
             break;
+        int from_page = (int)(size - bytes_read) < page_avail
+                        ? (int)(size - bytes_read) : page_avail;
+
+        memcpy(buf + bytes_read, data_buf + byte_in_page, from_page);
+        bytes_read += from_page;
+        cur_offset += from_page;
     }
-    
-    fprintf(stdout, "[uffs_read] finished\n");
-    return bytes_read;
+
+    fprintf(stdout, "[uffs_read] finished, read: %zu\n", bytes_read);
+    return (int)bytes_read;
 }
 
 int uffs_write(const char *path, const char *buf, size_t size, off_t offset,
               struct fuse_file_info *fi) {
-    fprintf(stdout, "[uffs_write] called, path: %s, size: %zu\n", path, size);
+    fprintf(stdout, "[uffs_write] called, path: %s, size: %zu, offset: %lld\n",
+            path, size, (long long)offset);
 
     TreeNode *file_node;
-    TreeNode *data_node;
-
-    // 파일 노드 찾기
     if (uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, path) == U_FAIL) {
         fprintf(stderr, "[uffs_write] file node not found\n");
         return -ENOENT;
     }
 
-    // 데이터 노드 찾기
-    data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    if (data_node == NULL) {
-        // 데이터 노드가 없으면 생성
-        int data_block_id;
-        u16 serial;
-        if (getFreeBlock(dev.fd, &data_block_id, &serial) == U_FAIL) {
-            fprintf(stderr, "[uffs_write] no free block available for data\n");
-            return -ENOSPC;
-        }
+    // 파일 블록 데이터 영역 끝 (byte 기준)
+    size_t file_block_end = (size_t)(PAGES_PER_BLOCK_DEFAULT - 1) * PAGE_DATA_SIZE_DEFAULT;
+    size_t write_end = (size_t)offset + size;
 
-        data_node = (TreeNode *)malloc(sizeof(TreeNode));
-        if (!data_node) {
-            fprintf(stderr, "[uffs_write] memory allocation failed for data_node\n");
-            return -ENOMEM;
-        }
-
-        if (initNode(&dev, data_node, data_block_id, UFFS_TYPE_DATA, file_node->u.file.serial, serial) == U_FAIL) {
-            fprintf(stderr, "[uffs_write] data node initialization failed\n");
-            free(data_node);
-            return -EIO;
-        }
-
-        uffs_InsertNodeToTree(&dev, UFFS_TYPE_DATA, data_node);
-    }
-
-    // 데이터 블록 초기화 (모든 페이지를 0으로 설정)
-    int block_id = data_node->u.data.block;
-    for (int page_id = 0; page_id < PAGES_PER_BLOCK_DEFAULT; page_id++) {
-        char empty_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-        uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
-        uffs_Tag tag = {0};
-        tag.s.dirty = 1;
-        tag.s.valid = 0;
-        tag.s.type = UFFS_TYPE_DATA;
-        tag.s.data_len = 0;  // 초기화된 페이지는 데이터 없음
-        tag.s.serial = data_node->u.data.serial;
-        tag.s.page_id = page_id;
-        tag.s.parent = file_node->u.file.serial;
-
-        // 빈 페이지 쓰기
-        if (writePage(dev.fd, block_id, page_id, &mini_header, empty_buf, &tag) == U_FAIL) {
-            fprintf(stderr, "[uffs_write] failed to initialize page %d\n", page_id);
-            return -EIO;
+    // 쓰기가 데이터 블록 영역에 걸쳐 있으면 데이터 노드 미리 확보
+    TreeNode *data_node = NULL;
+    if (write_end > file_block_end) {
+        data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
+        if (data_node == NULL) {
+            int data_block_id;
+            u16 serial;
+            if (getFreeBlock(dev.fd, &data_block_id, &serial) == U_FAIL) {
+                fprintf(stderr, "[uffs_write] no free block for data\n");
+                return -ENOSPC;
+            }
+            data_node = (TreeNode *)malloc(sizeof(TreeNode));
+            if (!data_node) return -ENOMEM;
+            if (initNode(&dev, data_node, data_block_id, UFFS_TYPE_DATA,
+                         file_node->u.file.serial, serial) == U_FAIL) {
+                free(data_node);
+                return -EIO;
+            }
+            uffs_InsertNodeToTree(&dev, UFFS_TYPE_DATA, data_node);
         }
     }
 
-    // 현재까지 작성된 데이터
+    int file_data_pages = PAGES_PER_BLOCK_DEFAULT - 1; // 파일 블록 데이터 페이지 수 (1~31)
     size_t written = 0;
+    size_t cur_offset = (size_t)offset;
 
-    // 한 블록의 최대 데이터 크기
-    size_t max_block_size = PAGES_PER_BLOCK_DEFAULT * PAGE_DATA_SIZE_DEFAULT;
-
-    // 작성할 데이터 크기 제한
-    if (size > max_block_size) {
-        size = max_block_size;
-    }
-
-    // 데이터 쓰기
-    int page_id = 0;
     while (written < size) {
-        char data_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-        size_t write_size = PAGE_DATA_SIZE_DEFAULT;
+        int logical_page  = (int)(cur_offset / PAGE_DATA_SIZE_DEFAULT);
+        int byte_in_page  = (int)(cur_offset % PAGE_DATA_SIZE_DEFAULT);
+        int bytes_this_page = PAGE_DATA_SIZE_DEFAULT - byte_in_page;
+        if ((size_t)bytes_this_page > size - written)
+            bytes_this_page = (int)(size - written);
 
-        // 남은 데이터 크기 확인
-        if (size - written < write_size) {
-            write_size = size - written;
+        // 논리 페이지 → 물리 블록/페이지 매핑
+        int block, phys_page;
+        u8  tag_type;
+        u16 tag_serial, tag_parent;
+        if (logical_page < file_data_pages) {
+            // 파일 블록 (page 0은 메타데이터이므로 +1)
+            block      = file_node->u.file.block;
+            phys_page  = logical_page + 1;
+            tag_type   = UFFS_TYPE_FILE;
+            tag_serial = file_node->u.file.serial;
+            tag_parent = file_node->u.file.parent;
+        } else {
+            // 데이터 블록
+            block      = data_node->u.data.block;
+            phys_page  = logical_page - file_data_pages;
+            tag_type   = UFFS_TYPE_DATA;
+            tag_serial = data_node->u.data.serial;
+            tag_parent = file_node->u.file.serial;
         }
 
-        // 입력 데이터를 복사
-        memcpy(data_buf, buf + written, write_size);
+        // 기존 페이지 읽기 (partial write 시 나머지 바이트 보존)
+        char page_data[PAGE_DATA_SIZE_DEFAULT] = {0};
+        uffs_MiniHeader mh = {0};
+        uffs_Tag existing_tag = {0};
+        readPage(dev.fd, block, phys_page, &mh, page_data, &existing_tag);
 
-        // 페이지 태그 설정
-        uffs_MiniHeader mini_header = {0x01, 0x00, 0xFFFF};
-        uffs_Tag tag = {0};
-        tag.s.dirty = 1;
-        tag.s.valid = 0;
-        tag.s.type = UFFS_TYPE_DATA;
-        tag.s.data_len = write_size;
-        tag.s.serial = data_node->u.data.serial;
-        tag.s.page_id = page_id;
-        tag.s.parent = file_node->u.file.serial;
+        int existing_data_len = (mh.status == 0xFF) ? 0 : (int)existing_tag.s.data_len;
 
-        // 페이지 쓰기
-        if (writePage(dev.fd, block_id, page_id, &mini_header, data_buf, &tag) == U_FAIL) {
-            fprintf(stderr, "[uffs_write] failed to write page %d\n", page_id);
-            return -EIO;
+        // 새 데이터 덮어쓰기
+        memcpy(page_data + byte_in_page, buf + written, bytes_this_page);
+
+        // 페이지 유효 길이: 기존과 이번 쓰기 범위 중 큰 값
+        int new_data_len = byte_in_page + bytes_this_page;
+        if (existing_data_len > new_data_len)
+            new_data_len = existing_data_len;
+
+        uffs_MiniHeader new_mh = {0x01, 0x00, 0xFFFF};
+        uffs_Tag new_tag = {0};
+        new_tag.s.dirty    = 1;
+        new_tag.s.valid    = 0;
+        new_tag.s.type     = tag_type;
+        new_tag.s.data_len = new_data_len;
+        new_tag.s.serial   = tag_serial;
+        new_tag.s.parent   = tag_parent;
+        new_tag.s.page_id  = phys_page;
+        new_tag.s.tag_ecc  = TAG_ECC_DEFAULT;
+
+        if (writePage(dev.fd, block, phys_page, &new_mh, page_data, &new_tag) == U_FAIL) {
+            fprintf(stderr, "[uffs_write] failed to write page (block=%d, page=%d)\n",
+                    block, phys_page);
+            return written > 0 ? (int)written : -EIO;
         }
 
-        written += write_size;
-        page_id++;
-        if(page_id>=PAGES_PER_BLOCK_DEFAULT)
-            break;
+        written    += bytes_this_page;
+        cur_offset += bytes_this_page;
     }
 
-    // 파일 크기 갱신
-    file_node->u.file.len = written;
-    data_node->u.data.len = written;
+    // 파일 길이 갱신: 파일이 확장된 경우에만 업데이트
+    if (write_end > (size_t)file_node->u.file.len)
+        file_node->u.file.len = write_end;
 
-    // 메타데이터 갱신 (기존 파일 이름 보존)
+    // 데이터 노드 길이 갱신
+    if (data_node != NULL && write_end > file_block_end) {
+        size_t data_used = write_end - file_block_end;
+        if (data_used > data_node->u.data.len)
+            data_node->u.data.len = data_used;
+    }
+
+    // 메타데이터 갱신 (파일 이름 보존)
     uffs_FileInfo file_info = {0};
     getFileInfoBySerial(dev.fd, file_node->u.file.serial, &file_info);
     updateFileInfoPage(&dev, file_node, &file_info, 0, UFFS_TYPE_FILE);
 
-    fprintf(stdout, "[uffs_write] finished\n");
-    return written;
+    fprintf(stdout, "[uffs_write] finished, written: %zu\n", written);
+    return (int)written;
 }
 
 

@@ -120,11 +120,11 @@ static void test_write_updates_file_len(void)
 }
 
 /* -------------------------------------------------------------------------- */
-/* 테스트 3: uffs_write 후 data_node 트리 삽입 확인                              */
+/* 테스트 3: 소용량 파일은 파일 블록 page 1에 저장, data_node 없음               */
 /* -------------------------------------------------------------------------- */
-static void test_write_inserts_data_node(void)
+static void test_write_data_in_file_block(void)
 {
-    SECTION("uffs_write 후 data_node 트리 삽입 확인");
+    SECTION("소용량 파일 — 파일 블록 page 1에 저장, data_node 없음");
 
     int fd = create_disk();
     if (fd < 0) { FAIL("디스크 이미지 생성 실패"); return; }
@@ -133,15 +133,24 @@ static void test_write_inserts_data_node(void)
     struct fuse_file_info fi = {0};
     uffs_create("/test.txt", 0644, &fi);
 
-    const char *buf = "test data";
-    uffs_write("/test.txt", buf, strlen(buf), 0, &fi);
+    const char *msg = "test data";
+    size_t msg_len = strlen(msg);
+    uffs_write("/test.txt", msg, msg_len, 0, &fi);
 
     TreeNode *file_node = NULL;
     uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/test.txt");
-    if (file_node == NULL) { FAIL("파일 노드 없음 — data_node 검증 불가"); close(fd); return; }
+    if (file_node == NULL) { FAIL("파일 노드 없음"); close(fd); return; }
 
+    /* 소용량 파일은 data_node 없음 */
     TreeNode *data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    CHECK(data_node != NULL, "data_node 트리에 삽입됨");
+    CHECK(data_node == NULL, "소용량 파일은 data_node 없음");
+
+    /* 파일 블록 page 1에 데이터가 있어야 함 */
+    char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+    uffs_MiniHeader mini = {0};
+    readPage(fd, file_node->u.file.block, 1, &mini, read_buf, NULL);
+    CHECK(mini.status != 0xFF, "파일 블록 page 1이 사용 중");
+    CHECK(memcmp(read_buf, msg, msg_len) == 0, "파일 블록 page 1 데이터 일치");
 
     close(fd);
 }
@@ -168,20 +177,16 @@ static void test_write_disk_content(void)
     uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/disk.txt");
     if (file_node == NULL) { FAIL("파일 노드 없음"); close(fd); return; }
 
-    TreeNode *data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    if (data_node == NULL) { FAIL("data_node 없음 — readPage 검증 불가"); close(fd); return; }
-
-    int block = data_node->u.data.block;
-
     uffs_MiniHeader mini = {0};
     char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
     uffs_Tag tag = {0};
 
-    URET r = readPage(fd, block, 0, &mini, read_buf, &tag);
+    // 파일 블록 page 1에서 데이터 읽기
+    URET r = readPage(fd, file_node->u.file.block, 1, &mini, read_buf, &tag);
     CHECK(r == U_SUCC, "readPage 성공");
-    CHECK(memcmp(read_buf, msg, msg_len) == 0, "page0 데이터 = 쓴 데이터");
+    CHECK(memcmp(read_buf, msg, msg_len) == 0, "파일 블록 page 1 데이터 = 쓴 데이터");
     CHECK((size_t)tag.s.data_len == msg_len,   "tag.data_len = 쓴 크기");
-    CHECK(tag.s.type == UFFS_TYPE_DATA,        "tag.type = UFFS_TYPE_DATA");
+    CHECK(tag.s.type == UFFS_TYPE_FILE,        "tag.type = UFFS_TYPE_FILE");
 
     close(fd);
 }
@@ -215,14 +220,11 @@ static void test_write_twice_overwrites(void)
     uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/twice.txt");
     if (file_node == NULL) { FAIL("파일 노드 없음 — 두 번째 쓰기 검증 불가"); close(fd); return; }
 
-    TreeNode *data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    if (data_node == NULL) { FAIL("data_node 없음 — 두 번째 쓰기 검증 불가"); close(fd); return; }
-
     char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-    readPage(fd, data_node->u.data.block, 0, NULL, read_buf, NULL);
+    readPage(fd, file_node->u.file.block, 1, NULL, read_buf, NULL);
 
     CHECK(memcmp(read_buf, second, len) == 0,
-          "두 번째 쓰기 후 page0 = 'SECOND_DAT'");
+          "두 번째 쓰기 후 파일 블록 page 1 = 'SECOND_DAT'");
 
     close(fd);
 }
@@ -251,13 +253,10 @@ static void test_write_full_page(void)
     uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/page.bin");
     if (file_node == NULL) { FAIL("파일 노드 없음"); close(fd); return; }
 
-    TreeNode *data_node = uffs_TreeFindDataNodeByParent(&dev, file_node->u.file.serial);
-    if (data_node == NULL) { FAIL("data_node 없음 — 페이지 검증 불가"); close(fd); return; }
-
     char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
-    readPage(fd, data_node->u.data.block, 0, NULL, read_buf, NULL);
+    readPage(fd, file_node->u.file.block, 1, NULL, read_buf, NULL);
     CHECK(memcmp(read_buf, buf, PAGE_DATA_SIZE_DEFAULT) == 0,
-          "512바이트 디스크 데이터 일치");
+          "512바이트 파일 블록 page 1 데이터 일치");
 
     close(fd);
 }
@@ -292,6 +291,76 @@ static void test_write_in_subdir(void)
 }
 
 /* -------------------------------------------------------------------------- */
+/* 테스트 8: offset > 0 쓰기 — 앞 바이트 보존 확인                              */
+/* -------------------------------------------------------------------------- */
+static void test_write_with_offset(void)
+{
+    SECTION("offset > 0 쓰기 — 앞 바이트 보존 (partial overwrite)");
+
+    int fd = create_disk();
+    if (fd < 0) { FAIL("디스크 이미지 생성 실패"); return; }
+    reset_dev(fd);
+
+    struct fuse_file_info fi = {0};
+    uffs_create("/offset.txt", 0644, &fi);
+
+    /* 먼저 "AAAAAAAAAA" (10바이트) 를 offset 0에 쓴다 */
+    const char *first = "AAAAAAAAAA";
+    uffs_write("/offset.txt", first, 10, 0, &fi);
+
+    /* 이후 "BBB" (3바이트) 를 offset 4에 덮어쓴다 → "AAAABBBAA" 가 되어야 함 */
+    const char *patch = "BBB";
+    int ret = uffs_write("/offset.txt", patch, 3, 4, &fi);
+    CHECK(ret == 3, "offset 4 쓰기 반환 = 3");
+
+    /* 파일 블록 page 1 을 직접 읽어 검증 */
+    TreeNode *file_node = NULL;
+    uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/offset.txt");
+    if (file_node == NULL) { FAIL("파일 노드 없음"); close(fd); return; }
+
+    char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+    readPage(fd, file_node->u.file.block, 1, NULL, read_buf, NULL);
+
+    CHECK(memcmp(read_buf,     "AAAA", 4) == 0, "offset 0~3: 'AAAA' 보존");
+    CHECK(memcmp(read_buf + 4, "BBB",  3) == 0, "offset 4~6: 'BBB' 덮어쓰기");
+    CHECK(memcmp(read_buf + 7, "AAA",  3) == 0, "offset 7~9: 'AAA' 보존");
+
+    close(fd);
+}
+
+/* -------------------------------------------------------------------------- */
+/* 테스트 9: append — offset = file_len 으로 이어쓰기                           */
+/* -------------------------------------------------------------------------- */
+static void test_write_append(void)
+{
+    SECTION("append — 기존 데이터 뒤에 이어쓰기");
+
+    int fd = create_disk();
+    if (fd < 0) { FAIL("디스크 이미지 생성 실패"); return; }
+    reset_dev(fd);
+
+    struct fuse_file_info fi = {0};
+    uffs_create("/append.txt", 0644, &fi);
+
+    uffs_write("/append.txt", "HELLO", 5, 0, &fi);
+
+    TreeNode *file_node = NULL;
+    uffs_TreeFindFileNodeByNameWithoutParent(&dev, &file_node, "/append.txt");
+    if (file_node == NULL) { FAIL("파일 노드 없음"); close(fd); return; }
+
+    /* file_len == 5 이므로 offset 5에 이어쓴다 */
+    int ret = uffs_write("/append.txt", "WORLD", 5, (off_t)file_node->u.file.len, &fi);
+    CHECK(ret == 5, "append 쓰기 반환 = 5");
+    CHECK(file_node->u.file.len == 10, "file_len == 10");
+
+    char read_buf[PAGE_DATA_SIZE_DEFAULT] = {0};
+    readPage(fd, file_node->u.file.block, 1, NULL, read_buf, NULL);
+    CHECK(memcmp(read_buf, "HELLOWORLD", 10) == 0, "page 1 내용 = 'HELLOWORLD'");
+
+    close(fd);
+}
+
+/* -------------------------------------------------------------------------- */
 /* main                                                                        */
 /* -------------------------------------------------------------------------- */
 int main(void)
@@ -302,11 +371,13 @@ int main(void)
 
     test_write_returns_size();
     test_write_updates_file_len();
-    test_write_inserts_data_node();
+    test_write_data_in_file_block();
     test_write_disk_content();
     test_write_twice_overwrites();
     test_write_full_page();
     test_write_in_subdir();
+    test_write_with_offset();
+    test_write_append();
 
     printf("\n================================================\n");
     printf("  결과: %d PASS  /  %d FAIL\n", g_pass, g_fail);
